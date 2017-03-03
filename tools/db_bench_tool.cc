@@ -86,7 +86,7 @@
 #include "utilities/blob_db/blob_db.h"
 #include "utilities/merge_operators.h"
 
-#define MAX_TRACE_OPS 50000000
+#define MAX_TRACE_OPS 100000000
 #define MAX_VALUE_SIZE (1024 * 1024)
 #define sassert(X) {if (!(X)) std::cerr << "\n\n\n\n" << status.ToString() << "\n\n\n\n"; assert(X);}
 
@@ -1280,6 +1280,7 @@ enum OperationType : unsigned char {
   kUncompress,
   kCrc,
   kHash,
+  kYCSB,
   kOthers
 };
 
@@ -3364,7 +3365,7 @@ class Benchmark {
   	unsigned long long key;
   	unsigned long param;
   };
-  struct trace_operation_t *trace_ops;
+  struct trace_operation_t *trace_ops[10]; // Assuming max of 10 concurrent threads
 
   struct result_t {
   	unsigned long long ycsbdata;
@@ -3381,9 +3382,10 @@ class Benchmark {
   	unsigned long long kv_itnext;
   };
 
-  struct result_t resultt = {};
+  struct result_t results[10];
 
-  unsigned long long print_splitup() {
+  unsigned long long print_splitup(int tid) {
+	struct result_t& resultt = results[tid];
   	printf("YCSB splitup: R = %llu, D = %llu, I = %llu, U = %llu, S = %llu\n",
   			resultt.ycsb_r,
   			resultt.ycsb_d,
@@ -3399,7 +3401,34 @@ class Benchmark {
   	return resultt.ycsb_r + resultt.ycsb_d + resultt.ycsb_i + resultt.ycsb_u + resultt.ycsb_s;
   }
 
-  void parse_trace(const char *file) {
+  int split_file_names(const char *file, char file_names[20][100]) {
+	  char delimiter = ',';
+	  int index  = 0;
+	  int cur = 0;
+	  for (size_t i = 0; i < strlen(file); i++) {
+		  if (file[i] == delimiter) {
+			  if (cur > 0) {
+				  file_names[index][cur] = '\0';
+				  index++;
+				  cur = 0;
+			  }
+			  continue;
+		  }
+		  if (file[i] == ' ') {
+			  continue;
+		  }
+		  file_names[index][cur] = file[i];
+		  cur++;
+	  }
+	  if (cur > 0) {
+		  file_names[index][cur] = '\0';
+		  cur = 0;
+		  index++;
+	  }
+	  return index;
+  }
+
+  void parse_trace(const char *file, int tid) {
   	int ret;
   	char *buf;
   	FILE *fp;
@@ -3407,19 +3436,29 @@ class Benchmark {
   	struct trace_operation_t *curop = NULL;
   	unsigned long long total_ops = 0;
 
-  	printf("Parsing trace ...\n");
-  	trace_ops = (struct trace_operation_t *) mmap(NULL, MAX_TRACE_OPS * sizeof(struct trace_operation_t),
+  	char file_names[20][100];
+  	int num_trace_files = split_file_names(file, file_names);
+
+  	const char* corresponding_file;
+  	if (tid >= num_trace_files) {
+  		corresponding_file = file_names[num_trace_files-1]; // Take the last file if number of files is lesser
+  	} else {
+  		corresponding_file = file_names[tid];
+  	}
+
+  	printf("Thread %d: Parsing trace ...\n", tid);
+  	trace_ops[tid] = (struct trace_operation_t *) mmap(NULL, MAX_TRACE_OPS * sizeof(struct trace_operation_t),
   			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  	if (trace_ops == MAP_FAILED)
+  	if (trace_ops[tid] == MAP_FAILED)
   		perror(NULL);
-  	assert(trace_ops != MAP_FAILED);
+  	assert(trace_ops[tid] != MAP_FAILED);
 
   	buf = (char *) malloc(bufsize);
   	assert (buf != NULL);
 
-  	fp = fopen(file, "r");
+  	fp = fopen(corresponding_file, "r");
   	assert(fp != NULL);
-  	curop = trace_ops;
+  	curop = trace_ops[tid];
   	while((ret = getline(&buf, &bufsize, fp)) > 0) {
   		char tmp[1000];
   		ret = sscanf(buf, "%c %llu %lu\n", &curop->cmd, &curop->key, &curop->param);
@@ -3438,12 +3477,12 @@ class Benchmark {
   		curop++;
   		total_ops++;
   	}
-  	printf("Done parsing, %llu operations.\n", total_ops);
+  	printf("Thread %d: Done parsing, %llu operations.\n", tid, total_ops);
   }
 
   char valuebuf[MAX_VALUE_SIZE];
 
-  void perform_op(DB *db, struct trace_operation_t *op) {
+  void perform_op(DB *db, struct trace_operation_t *op, int tid) {
   	char keybuf[100];
   	int keylen;
   	Status status;
@@ -3453,6 +3492,7 @@ class Benchmark {
   	keylen = sprintf(keybuf, "user%llu", op->key);
   	Slice key(keybuf, keylen);
 
+  	struct result_t& resultt = results[tid];
   	if (op->cmd == 'r') {
   		std::string value;
   		status = db->Get(roptions, key, &value);
@@ -3516,12 +3556,13 @@ class Benchmark {
   }
 
   void YCSB(ThreadState* thread) {
+	int tid = thread->tid;
 	DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
 	char trace_file[1000];
 
 	envstrinput(trace_file);
 
-	parse_trace(trace_file);
+	parse_trace(trace_file, tid);
 
 //	struct rlimit rlim;
 //	rlim.rlim_cur = 1000000;
@@ -3529,42 +3570,44 @@ class Benchmark {
 //	int ret;// = setrlimit(RLIMIT_NOFILE, &rlim);
 //	assert(ret == 0);
 
-	struct trace_operation_t *curop = trace_ops;
+	struct trace_operation_t *curop = trace_ops[tid];
 	unsigned long long total_ops = 0;
 	struct timeval start, end;
 
-	printf("Replaying trace ...\n");
+	printf("Thread %d: Replaying trace ...\n", tid);
 
 	gettimeofday(&start, NULL);
 	fprintf(stderr, "\nCompleted 0 ops");
 	fflush(stderr);
 	while(curop->cmd) {
-		perform_op(db_with_cfh->db, curop);
+		perform_op(db_with_cfh->db, curop, tid);
+		thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kYCSB);
 		curop++;
 		total_ops++;
-		if (total_ops % 10000 == 0) {
-			fprintf(stderr, "\rCompleted %llu ops", total_ops);
-		}
+//		if (total_ops % 10000 == 0) {
+//			fprintf(stderr, "\rCompleted %llu ops", total_ops);
+//		}
 	}
-	PrintStats("leveldb.stats");
+	PrintStats("rocksdb.stats");
 	fprintf(stderr, "\r");
 //	int ret = 
 	gettimeofday(&end, NULL);
 	double secs = (end.tv_sec - start.tv_sec) + double(end.tv_usec - start.tv_usec) / 1000000;
 
-	printf("\n\nDone replaying %llu operations.\n", total_ops);
-	unsigned long long splitup_ops = print_splitup();
+	struct result_t& resultt = results[tid];
+	printf("\n\nThread %d: Done replaying %llu operations.\n", tid, total_ops);
+	unsigned long long splitup_ops = print_splitup(tid);
 	assert(splitup_ops == total_ops);
-	printf("Time taken = %0.3lf seconds\n", secs);
-	printf("Total data: YCSB = %0.6lf GB, HyperLevelDB = %0.6lf GB\n",
+	printf("Thread %d: Time taken = %0.3lf seconds\n", tid, secs);
+	printf("Thread %d: Total data: YCSB = %0.6lf GB, HyperLevelDB = %0.6lf GB\n", tid,
 			double(resultt.ycsbdata) / 1024.0 / 1024.0 / 1024.0,
 			double(resultt.kvdata) / 1024.0 / 1024.0 / 1024.0);
-	printf("Ops/s = %0.3lf Kops/s\n", double(total_ops) / 1024.0 / secs);
+	printf("Thread %d: Ops/s = %0.3lf Kops/s\n", tid, double(total_ops) / 1024.0 / secs);
 
 	double throughput = double(resultt.ycsbdata) / secs;
-	printf("YCSB throughput = %0.6lf MB/s\n", throughput / 1024.0 / 1024.0);
+	printf("Thread %d: YCSB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
 	throughput = double(resultt.kvdata) / secs;
-	printf("HyperLevelDB throughput = %0.6lf MB/s\n", throughput / 1024.0 / 1024.0);
+	printf("Thread %d: HyperLevelDB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
   }
 
   void ReadRandom(ThreadState* thread) {

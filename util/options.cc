@@ -40,7 +40,7 @@ ColumnFamilyOptions::ColumnFamilyOptions()
       merge_operator(nullptr),
       compaction_filter(nullptr),
       compaction_filter_factory(nullptr),
-      write_buffer_size(64 << 20),
+      write_buffer_size(4 << 20),
       max_write_buffer_number(2),
       min_write_buffer_number_to_merge(1),
       max_write_buffer_number_to_maintain(0),
@@ -49,8 +49,8 @@ ColumnFamilyOptions::ColumnFamilyOptions()
       prefix_extractor(nullptr),
       num_levels(7),
       level0_file_num_compaction_trigger(4),
-      level0_slowdown_writes_trigger(20),
-      level0_stop_writes_trigger(24),
+      level0_slowdown_writes_trigger(8),
+      level0_stop_writes_trigger(12),
       target_file_size_base(64 * 1048576),
       target_file_size_multiplier(1),
       max_bytes_for_level_base(256 * 1048576),
@@ -173,7 +173,7 @@ DBOptions::DBOptions()
 #else
       info_log_level(DEBUG_LEVEL),
 #endif  // NDEBUG
-      max_open_files(-1),
+      max_open_files(1000),
       max_file_opening_threads(16),
       max_total_wal_size(0),
       statistics(nullptr),
