@@ -3482,7 +3482,7 @@ class Benchmark {
 
   char valuebuf[MAX_VALUE_SIZE];
 
-  void perform_op(DB *db, struct trace_operation_t *op, int tid) {
+  Status perform_op(DB *db, struct trace_operation_t *op, int tid) {
   	char keybuf[100];
   	int keylen;
   	Status status;
@@ -3496,7 +3496,7 @@ class Benchmark {
   	if (op->cmd == 'r') {
   		std::string value;
   		status = db->Get(roptions, key, &value);
-  		sassert(status.ok());
+//  		sassert(status.ok());
   		resultt.ycsbdata += keylen + value.length();
   		resultt.kvdata += keylen + value.length();
   		//assert(value.length() == 1080);
@@ -3553,6 +3553,7 @@ class Benchmark {
   	} else {
   		assert(false);
   	}
+  	return status;
   }
 
   void YCSB(ThreadState* thread) {
@@ -3579,8 +3580,12 @@ class Benchmark {
 	gettimeofday(&start, NULL);
 	fprintf(stderr, "\nCompleted 0 ops");
 	fflush(stderr);
+	uint64_t succeeded = 0;
 	while(curop->cmd) {
-		perform_op(db_with_cfh->db, curop, tid);
+		Status status = perform_op(db_with_cfh->db, curop, tid);
+		if (status.ok()) {
+			succeeded++;
+		}
 		thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kYCSB);
 		curop++;
 		total_ops++;
