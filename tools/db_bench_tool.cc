@@ -231,9 +231,9 @@ DEFINE_int32(threads, 1, "Number of concurrent threads to run.");
 DEFINE_int32(duration, 0, "Time in seconds for the random-ops tests to run."
              " When 0 then num & reads determine the test duration");
 
-DEFINE_int32(value_size, 100, "Size of each value");
+DEFINE_int32(value_size, 4096, "Size of each value");
 
-DEFINE_int32(seek_nexts, 0,
+DEFINE_int32(seek_nexts, 50,
              "How many times to call Next() after Seek() in "
              "fillseekseq, seekrandom, seekrandomwhilewriting and "
              "seekrandomwhilemerging");
@@ -442,7 +442,7 @@ DEFINE_int32(bloom_bits, -1, "Bloom filter bits per key. Negative means"
 DEFINE_double(memtable_bloom_size_ratio, 0,
               "Ratio of memtable size used for bloom filter. 0 means no bloom "
               "filter.");
-DEFINE_bool(memtable_use_huge_page, false,
+DEFINE_bool(memtable_use_huge_page, true,
             "Try to use huge page in memtables.");
 
 DEFINE_bool(use_existing_db, false, "If true, do not destroy the existing"
@@ -481,18 +481,18 @@ DEFINE_bool(disable_data_sync, false, "If true, do not wait until data is"
 
 DEFINE_bool(use_fsync, false, "If true, issue fsync instead of fdatasync");
 
-DEFINE_bool(disable_wal, false, "If true, do not write WAL for write.");
+DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
 
 DEFINE_string(wal_dir, "", "If not empty, use the given dir for WAL");
 
 DEFINE_int32(num_levels, 7, "The total number of levels");
 
-DEFINE_int64(target_file_size_base, 2 * 1048576, "Target file size at level-1");
+DEFINE_int64(target_file_size_base, 4 * 1048576, "Target file size at level-1");
 
 DEFINE_int32(target_file_size_multiplier, 1,
              "A multiplier to compute target level-N file size (N >= 2)");
 
-DEFINE_uint64(max_bytes_for_level_base,  10 * 1048576, "Max bytes for level-1");
+DEFINE_uint64(max_bytes_for_level_base,  256 * 1048576, "Max bytes for level-1");
 
 DEFINE_bool(level_compaction_dynamic_level_bytes, false,
             "Whether level size base is dynamic");
@@ -633,7 +633,7 @@ std::string ColumnFamilyName(size_t i) {
   }
 }
 
-DEFINE_string(compression_type, "snappy",
+DEFINE_string(compression_type, "none",
               "Algorithm to use to compress the database");
 static enum rocksdb::CompressionType FLAGS_compression_type_e =
     rocksdb::kSnappyCompression;
@@ -770,10 +770,14 @@ DEFINE_uint64(max_total_wal_size, 0, "Set total max WAL size");
 DEFINE_bool(bufferedio, rocksdb::EnvOptions().use_os_buffer,
             "Allow buffered io using OS buffers");
 
-DEFINE_bool(mmap_read, rocksdb::EnvOptions().use_mmap_reads,
+//DEFINE_bool(mmap_read, rocksdb::EnvOptions().use_mmap_reads,
+//            "Allow reads to occur via mmap-ing files");
+DEFINE_bool(mmap_read, true,
             "Allow reads to occur via mmap-ing files");
 
-DEFINE_bool(mmap_write, rocksdb::EnvOptions().use_mmap_writes,
+//DEFINE_bool(mmap_write, rocksdb::EnvOptions().use_mmap_writes,
+//            "Allow writes to occur via mmap-ing files");
+DEFINE_bool(mmap_write, true,
             "Allow writes to occur via mmap-ing files");
 
 DEFINE_bool(advise_random_on_open, rocksdb::Options().advise_random_on_open,
@@ -2886,8 +2890,10 @@ class Benchmark {
 
     // fill storage options
     options.allow_os_buffer = FLAGS_bufferedio;
-    options.allow_mmap_reads = FLAGS_mmap_read;
-    options.allow_mmap_writes = FLAGS_mmap_write;
+    //options.allow_mmap_reads = FLAGS_mmap_read;
+    //options.allow_mmap_writes = FLAGS_mmap_write;
+    options.allow_mmap_reads = true;
+    options.allow_mmap_writes = true;
     options.advise_random_on_open = FLAGS_advise_random_on_open;
     options.access_hint_on_compaction_start = FLAGS_compaction_fadvice_e;
     options.use_adaptive_mutex = FLAGS_use_adaptive_mutex;
@@ -3182,6 +3188,15 @@ class Benchmark {
     WriteBatch batch;
     Status s;
     int64_t bytes = 0;
+	struct  rusage *usage;
+
+	usage = (struct rusage *) malloc (sizeof(struct rusage));
+
+    printf("PAGE FAULTS BEFORE WORKLOAD: \n");
+	getrusage(RUSAGE_SELF, usage);
+	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
 
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
@@ -3239,6 +3254,13 @@ class Benchmark {
         exit(1);
       }
     }
+
+    printf("PAGE FAULTS AFTER WORKLOAD: \n");
+	getrusage(RUSAGE_SELF, usage);
+	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
     thread->stats.AddBytes(bytes);
   }
 
@@ -3259,11 +3281,28 @@ class Benchmark {
     Iterator* iter = db->NewIterator(options);
     int64_t i = 0;
     int64_t bytes = 0;
+	struct  rusage *usage;
+
+	usage = (struct rusage *) malloc (sizeof(struct rusage));
+
+    printf("PAGE FAULTS BEFORE WORKLOAD: \n");
+	getrusage(RUSAGE_SELF, usage);
+	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
     for (iter->SeekToFirst(); i < reads_ && iter->Valid(); iter->Next()) {
       bytes += iter->key().size() + iter->value().size();
       thread->stats.FinishedOps(nullptr, db, 1, kRead);
       ++i;
     }
+
+    printf("PAGE FAULTS AFTER WORKLOAD: \n");
+	getrusage(RUSAGE_SELF, usage);
+	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
     delete iter;
     thread->stats.AddBytes(bytes);
   }
@@ -3581,6 +3620,16 @@ class Benchmark {
 	fprintf(stderr, "\nCompleted 0 ops");
 	fflush(stderr);
 	uint64_t succeeded = 0;
+	struct  rusage *usage;
+
+	usage = (struct rusage *) malloc (sizeof(struct rusage));
+
+    printf("PAGE FAULTS BEFORE WORKLOAD: \n");
+	getrusage(RUSAGE_SELF, usage);
+	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
 	while(curop->cmd) {
 		Status status = perform_op(db_with_cfh->db, curop, tid);
 		if (status.ok()) {
@@ -3593,6 +3642,13 @@ class Benchmark {
 //			fprintf(stderr, "\rCompleted %llu ops", total_ops);
 //		}
 	}
+
+    printf("PAGE FAULTS AFTER WORKLOAD: \n");
+	getrusage(RUSAGE_SELF, usage);
+	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
 	PrintStats("rocksdb.stats");
 	fprintf(stderr, "\r");
 //	int ret = 
@@ -3626,6 +3682,17 @@ class Benchmark {
     std::string value;
 
     Duration duration(FLAGS_duration, reads_);
+
+    struct  rusage *usage;
+
+    usage = (struct rusage *) malloc (sizeof(struct rusage));
+
+    printf("PAGE FAULTS BEFORE WORKLOAD: \n");
+    getrusage(RUSAGE_SELF, usage);
+    printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+    printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
     while (!duration.Done(1)) {
       DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
       // We use same key_rand as seed for key and column family so that we can
@@ -3650,6 +3717,12 @@ class Benchmark {
       }
       thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kRead);
     }
+
+    printf("PAGE FAULTS AFTER WORKLOAD: \n");
+	getrusage(RUSAGE_SELF, usage);
+	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
 
     char msg[100];
     snprintf(msg, sizeof(msg), "(%" PRIu64 " of %" PRIu64 " found)\n",
@@ -3746,6 +3819,17 @@ class Benchmark {
 
     Duration duration(FLAGS_duration, reads_);
     char value_buffer[256];
+
+    struct  rusage *usage;
+
+    usage = (struct rusage *) malloc (sizeof(struct rusage));
+
+    printf("PAGE FAULTS BEFORE WORKLOAD: \n");
+    getrusage(RUSAGE_SELF, usage);
+    printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+    printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
     while (!duration.Done(1)) {
       if (!FLAGS_use_tailing_iterator) {
         if (db_.db != nullptr) {
@@ -3791,6 +3875,13 @@ class Benchmark {
 
       thread->stats.FinishedOps(&db_, db_.db, 1, kSeek);
     }
+
+    printf("PAGE FAULTS AFTER WORKLOAD: \n");
+    getrusage(RUSAGE_SELF, usage);
+    printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+    printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+    printf("--------- \n");
+
     delete single_iter;
     for (auto iter : multi_iters) {
       delete iter;

@@ -257,7 +257,8 @@ class PosixEnv : public Env {
     } else {
       SetFD_CLOEXEC(fd, &options);
       if (options.use_mmap_writes) {
-        if (!checkedDiskForMmap_) {
+	      /*
+	 if (!checkedDiskForMmap_) {
           // this will be executed once in the program's lifetime.
           // do not use mmapWrite on non ext-3/xfs/tmpfs systems.
           if (!SupportsFastAllocate(fname)) {
@@ -265,6 +266,7 @@ class PosixEnv : public Env {
           }
           checkedDiskForMmap_ = true;
         }
+	      */
       }
       if (options.use_mmap_writes && !forceMmapOff) {
         result->reset(new PosixMmapFile(fname, fd, page_size_, options));
@@ -323,6 +325,7 @@ class PosixEnv : public Env {
         return r;
       }
       if (options.use_mmap_writes) {
+	      /*
         if (!checkedDiskForMmap_) {
           // this will be executed once in the program's lifetime.
           // do not use mmapWrite on non ext-3/xfs/tmpfs systems.
@@ -331,6 +334,7 @@ class PosixEnv : public Env {
           }
           checkedDiskForMmap_ = true;
         }
+	      */
       }
       if (options.use_mmap_writes && !forceMmapOff) {
         result->reset(new PosixMmapFile(fname, fd, page_size_, options));
@@ -706,7 +710,7 @@ class PosixEnv : public Env {
   EnvOptions OptimizeForLogWrite(const EnvOptions& env_options,
                                  const DBOptions& db_options) const override {
     EnvOptions optimized = env_options;
-    optimized.use_mmap_writes = false;
+    optimized.use_mmap_writes = true;
     optimized.bytes_per_sync = db_options.wal_bytes_per_sync;
     // TODO(icanadi) it's faster if fallocate_with_keep_size is false, but it
     // breaks TransactionLogIteratorStallAtLastRecord unit test. Fix the unit
@@ -718,7 +722,7 @@ class PosixEnv : public Env {
   EnvOptions OptimizeForManifestWrite(
       const EnvOptions& env_options) const override {
     EnvOptions optimized = env_options;
-    optimized.use_mmap_writes = false;
+    optimized.use_mmap_writes = true;
     optimized.fallocate_with_keep_size = true;
     return optimized;
   }

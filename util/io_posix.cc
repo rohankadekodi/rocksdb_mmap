@@ -481,7 +481,7 @@ Status PosixMmapFile::MapNewRegion() {
   void* ptr = mmap(nullptr, map_size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_,
                    file_offset_);
   if (ptr == MAP_FAILED) {
-    return Status::IOError("MMap failed on " + filename_);
+	  return Status::IOError("MMap failed on " + filename_ + " error = " + strerror(errno));
   }
   TEST_KILL_RANDOM("PosixMmapFile::Append:2", rocksdb_kill_odds);
 
@@ -516,7 +516,7 @@ PosixMmapFile::PosixMmapFile(const std::string& fname, int fd, size_t page_size,
     : filename_(fname),
       fd_(fd),
       page_size_(page_size),
-      map_size_(Roundup(65536, page_size)),
+      map_size_(Roundup(2097152, page_size)),
       base_(nullptr),
       limit_(nullptr),
       dst_(nullptr),

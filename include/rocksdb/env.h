@@ -64,7 +64,7 @@ struct EnvOptions {
   bool use_os_buffer = true;
 
    // If true, then use mmap to read data
-  bool use_mmap_reads = false;
+  bool use_mmap_reads = true;
 
    // If true, then use mmap to write data
   bool use_mmap_writes = true;
