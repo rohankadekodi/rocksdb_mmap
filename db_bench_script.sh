@@ -67,7 +67,7 @@ load_workload()
 
     date
 
-    ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=3000000 $parameters 2>&1 | tee $resultDir/Run$runId
+    ./db_bench --use_existing_db=0 --benchmarks=fillseq,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
     #strace -o trace_fillrandom_dax.out -f ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters #2>&1 | tee $resultDir/Run$runId
 
     date
