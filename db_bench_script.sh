@@ -24,7 +24,7 @@ fi
 databaseDir=$pmemDir/rocksdbtest-1000
 
 echo Configuration: 20, 24, 64MB
-parameters=' --write_buffer_size=67108864 --open_files=1000 --level0_slowdown_writes_trigger=20 --level0_stop_writes_trigger=24 --mmap_read=true --mmap_write=true --allow_concurrent_memtable_write=false --disable_wal=true --num_levels=7 --memtable_use_huge_page=true --target_file_size_base=67108864 --max_bytes_for_level_base=268435456 --max_bytes_for_level_multiplier=10 --value_size=4096' # --disable_auto_compactions=true'
+parameters=' --write_buffer_size=67108864 --open_files=1000 --level0_slowdown_writes_trigger=20 --level0_stop_writes_trigger=24 --mmap_read=true --mmap_write=true --allow_concurrent_memtable_write=true --disable_wal=false --num_levels=7 --memtable_use_huge_page=true --target_file_size_base=67108864 --max_bytes_for_level_base=268435456 --max_bytes_for_level_multiplier=10 --value_size=1024' # --disable_auto_compactions=true'
 echo parameters: $parameters
 
 ulimit -c unlimited
@@ -67,7 +67,7 @@ load_workload()
 
     date
 
-    ./db_bench --use_existing_db=0 --benchmarks=fillseq,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
+    ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
     #strace -o trace_fillrandom_dax.out -f ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters #2>&1 | tee $resultDir/Run$runId
 
     date
@@ -122,7 +122,7 @@ run_workload()
 
     date
 
-    ./db_bench --use_existing_db=1 --benchmarks=readseq,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
+    ./db_bench --use_existing_db=1 --benchmarks=readrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
 
     date
 
@@ -150,12 +150,12 @@ setup_expt()
 {
     setup=$1
 
-    sudo rm -rf $pmemDir/*
+    #sudo rm -rf $pmemDir/*
 
     load_workload seq $setup
     $scriptsDir/pause_script.sh 10
 
-    sudo rm -rf $pmemDir/DR*
+    #sudo rm -rf $pmemDir/DR*
 
     run_workload seq $setup
     $scriptsDir/pause_script.sh 10

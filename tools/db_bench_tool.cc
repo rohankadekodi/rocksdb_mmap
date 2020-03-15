@@ -231,7 +231,7 @@ DEFINE_int32(threads, 1, "Number of concurrent threads to run.");
 DEFINE_int32(duration, 0, "Time in seconds for the random-ops tests to run."
              " When 0 then num & reads determine the test duration");
 
-DEFINE_int32(value_size, 4096, "Size of each value");
+DEFINE_int32(value_size, 1024, "Size of each value");
 
 DEFINE_int32(seek_nexts, 50,
              "How many times to call Next() after Seek() in "
@@ -481,7 +481,7 @@ DEFINE_bool(disable_data_sync, false, "If true, do not wait until data is"
 
 DEFINE_bool(use_fsync, false, "If true, issue fsync instead of fdatasync");
 
-DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
+DEFINE_bool(disable_wal, false, "If true, do not write WAL for write.");
 
 DEFINE_string(wal_dir, "", "If not empty, use the given dir for WAL");
 
@@ -728,7 +728,7 @@ DEFINE_uint64(delayed_write_rate, 8388608u,
               "Limited bytes allowed to DB when soft_rate_limit or "
               "level0_slowdown_writes_trigger triggers");
 
-DEFINE_bool(allow_concurrent_memtable_write, false,
+DEFINE_bool(allow_concurrent_memtable_write, true,
             "Allow multi-writers to update mem tables in parallel.");
 
 DEFINE_bool(enable_write_thread_adaptive_yield, false,
