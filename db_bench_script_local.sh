@@ -67,7 +67,7 @@ load_workload()
     date
 
     #strace -fo trace.log -c -e trace=$straceList ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
-    LD_PRELOAD=/home/cc/ScaleMem/app_manager/build/libappmanager.so ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters 2>&1 | tee $resultDir/Run$runId
+    ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters 2>&1 | tee $resultDir/Run$runId
 
     date
 

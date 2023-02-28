@@ -2485,16 +2485,19 @@ Status VersionSet::Recover(
   // by subsequent manifest records, Recover() will return failure status
   std::unordered_map<int, std::string> column_families_not_found;
 
+  printf("%s: %d\n", __func__, __LINE__);
   // Read "CURRENT" file, which contains a pointer to the current manifest file
   std::string manifest_filename;
   Status s = ReadFileToString(
       env_, CurrentFileName(dbname_), &manifest_filename
   );
   if (!s.ok()) {
+    printf("%s: %d\n", __func__, __LINE__);
     return s;
   }
   if (manifest_filename.empty() ||
       manifest_filename.back() != '\n') {
+    printf("%s: %d\n", __func__, __LINE__);
     return Status::Corruption("CURRENT file does not end with newline");
   }
   // remove the trailing '\n'
@@ -2503,6 +2506,7 @@ Status VersionSet::Recover(
   bool parse_ok =
       ParseFileName(manifest_filename, &manifest_file_number_, &type);
   if (!parse_ok || type != kDescriptorFile) {
+    printf("%s: %d\n", __func__, __LINE__);
     return Status::Corruption("CURRENT file corrupted");
   }
 
@@ -2514,9 +2518,11 @@ Status VersionSet::Recover(
   unique_ptr<SequentialFileReader> manifest_file_reader;
   {
     unique_ptr<SequentialFile> manifest_file;
+    printf("%s: %d\n", __func__, __LINE__);
     s = env_->NewSequentialFile(manifest_filename, &manifest_file,
                                 env_options_);
     if (!s.ok()) {
+      printf("%s: %d\n", __func__, __LINE__);
       return s;
     }
     manifest_file_reader.reset(
@@ -2525,6 +2531,7 @@ Status VersionSet::Recover(
   uint64_t current_manifest_file_size;
   s = env_->GetFileSize(manifest_filename, &current_manifest_file_size);
   if (!s.ok()) {
+    printf("%s: %d\n", __func__, __LINE__); 
     return s;
   }
 
@@ -2562,6 +2569,7 @@ Status VersionSet::Recover(
       VersionEdit edit;
       s = edit.DecodeFrom(record);
       if (!s.ok()) {
+        printf("%s: %d\n", __func__, __LINE__); 
         break;
       }
 
@@ -2585,6 +2593,7 @@ Status VersionSet::Recover(
 
       if (edit.is_column_family_add_) {
         if (cf_in_builders || cf_in_not_found) {
+          printf("%s: %d\n", __func__, __LINE__); 
           s = Status::Corruption(
               "Manifest adding the same column family twice");
           break;
@@ -2615,12 +2624,14 @@ Status VersionSet::Recover(
         } else if (cf_in_not_found) {
           column_families_not_found.erase(edit.column_family_);
         } else {
+          printf("%s: %d\n", __func__, __LINE__); 
           s = Status::Corruption(
               "Manifest - dropping non-existing column family");
           break;
         }
       } else if (!cf_in_not_found) {
         if (!cf_in_builders) {
+          printf("%s: %d\n", __func__, __LINE__); 
           s = Status::Corruption(
               "Manifest record referencing unknown column family");
           break;
@@ -2630,6 +2641,7 @@ Status VersionSet::Recover(
         // this should never happen since cf_in_builders is true
         assert(cfd != nullptr);
         if (edit.max_level_ >= cfd->current()->storage_info()->num_levels()) {
+          printf("%s: %d\n", __func__, __LINE__); 
           s = Status::InvalidArgument(
               "db has more levels than options.num_levels");
           break;
@@ -2656,6 +2668,7 @@ Status VersionSet::Recover(
         }
         if (edit.has_comparator_ &&
             edit.comparator_ != cfd->user_comparator()->Name()) {
+          printf("%s: %d\n", __func__, __LINE__); 
           s = Status::InvalidArgument(
               cfd->user_comparator()->Name(),
               "does not match existing comparator " + edit.comparator_);
@@ -2685,6 +2698,7 @@ Status VersionSet::Recover(
   }
 
   if (s.ok()) {
+    printf("%s: %d\n", __func__, __LINE__); 
     if (!have_next_file) {
       s = Status::Corruption("no meta-nextfile entry in descriptor");
     } else if (!have_log_number) {
@@ -2711,12 +2725,14 @@ Status VersionSet::Recover(
       list_of_not_found += ", " + cf.second;
     }
     list_of_not_found = list_of_not_found.substr(2);
+    printf("%s: %d\n", __func__, __LINE__); 
     s = Status::InvalidArgument(
         "You have to open all column families. Column families not opened: " +
         list_of_not_found);
   }
 
   if (s.ok()) {
+    printf("%s: %d\n", __func__, __LINE__); 
     for (auto cfd : *column_family_set_) {
       if (cfd->IsDropped()) {
         continue;
@@ -2747,6 +2763,7 @@ Status VersionSet::Recover(
     last_sequence_ = last_sequence;
     prev_log_number_ = previous_log_number;
 
+    printf("%s: %d\n", __func__, __LINE__); 
     Log(InfoLogLevel::INFO_LEVEL, db_options_->info_log,
         "Recovered from manifest file:%s succeeded,"
         "manifest_file_number is %lu, next_file_number is %lu, "
@@ -2772,6 +2789,7 @@ Status VersionSet::Recover(
     delete builder.second;
   }
 
+  printf("%s: %d\n", __func__, __LINE__); 
   return s;
 }
 

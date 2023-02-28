@@ -1,0 +1,4 @@
+hemem_init: started
+lru_init: started
+lru_init: finished
+hemem_init: finished

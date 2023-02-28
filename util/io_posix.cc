@@ -403,6 +403,15 @@ PosixMmapReadableFile::~PosixMmapReadableFile() {
   }
 }
 
+Status PosixMmapReadableFile::PrintFileDetails() const {
+  fprintf(stderr, "File name = %s\n", filename_.c_str());
+  fprintf(stderr, "FD = %d\n", fd_);
+  fprintf(stderr, "mmap_region = %lu\n", (uint64_t)mmapped_region_);
+  fprintf(stderr, "length = %lu\n", length_);
+
+  return Status.OK;
+}
+
 Status PosixMmapReadableFile::Read(uint64_t offset, size_t n, Slice* result,
                                    char* scratch) const {
   Status s;
@@ -516,7 +525,7 @@ PosixMmapFile::PosixMmapFile(const std::string& fname, int fd, size_t page_size,
     : filename_(fname),
       fd_(fd),
       page_size_(page_size),
-      map_size_(Roundup(2097152, page_size)),
+      map_size_(Roundup(65536, page_size)),
       base_(nullptr),
       limit_(nullptr),
       dst_(nullptr),

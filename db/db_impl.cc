@@ -560,6 +560,7 @@ const Status DBImpl::CreateArchivalDirectory() {
   if (immutable_db_options_.wal_ttl_seconds > 0 ||
       immutable_db_options_.wal_size_limit_mb > 0) {
     std::string archivalPath = ArchivalDirectory(immutable_db_options_.wal_dir);
+    printf("Creating dir: %s\n", archivalPath.c_str());
     return env_->CreateDirIfMissing(archivalPath);
   }
   return Status::OK();
@@ -1221,9 +1222,12 @@ Status DBImpl::Recover(
     bool error_if_log_file_exist, bool error_if_data_exists_in_logs) {
   mutex_.AssertHeld();
 
+  printf("%s: %d\n", __func__, __LINE__);
+
   bool is_new_db = false;
   assert(db_lock_ == nullptr);
   if (!read_only) {
+    printf("%s: %d\n", __func__, __LINE__);
     Status s = directories_.SetDirectories(env_, dbname_,
                                            immutable_db_options_.wal_dir,
                                            immutable_db_options_.db_paths);
@@ -1231,51 +1235,64 @@ Status DBImpl::Recover(
       return s;
     }
 
+    printf("%s: %d\n", __func__, __LINE__);
     s = env_->LockFile(LockFileName(dbname_), &db_lock_);
     if (!s.ok()) {
       return s;
     }
 
+    printf("%s: %d\n", __func__, __LINE__);
     s = env_->FileExists(CurrentFileName(dbname_));
     if (s.IsNotFound()) {
       if (immutable_db_options_.create_if_missing) {
+        printf("%s: %d\n", __func__, __LINE__);
         s = NewDB();
         is_new_db = true;
         if (!s.ok()) {
           return s;
         }
       } else {
+        printf("%s: %d\n", __func__, __LINE__);
         return Status::InvalidArgument(
             dbname_, "does not exist (create_if_missing is false)");
       }
     } else if (s.ok()) {
       if (immutable_db_options_.error_if_exists) {
+        printf("%s: %d\n", __func__, __LINE__);
         return Status::InvalidArgument(
             dbname_, "exists (error_if_exists is true)");
       }
     } else {
       // Unexpected error reading file
+      printf("%s: %d\n", __func__, __LINE__);
       assert(s.IsIOError());
       return s;
     }
     // Check for the IDENTITY file and create it if not there
+    printf("%s: %d\n", __func__, __LINE__);
     s = env_->FileExists(IdentityFileName(dbname_));
     if (s.IsNotFound()) {
+      printf("%s: %d\n", __func__, __LINE__);
       s = SetIdentityFile(env_, dbname_);
       if (!s.ok()) {
+        printf("%s: %d\n", __func__, __LINE__);
         return s;
       }
     } else if (!s.ok()) {
+      printf("%s: %d\n", __func__, __LINE__);
       assert(s.IsIOError());
       return s;
     }
   }
 
+  printf("%s: %d\n", __func__, __LINE__);
   Status s = versions_->Recover(column_families, read_only);
   if (immutable_db_options_.paranoid_checks && s.ok()) {
+    printf("%s: %d\n", __func__, __LINE__);
     s = CheckConsistency();
   }
   if (s.ok()) {
+    printf("%s: %d\n", __func__, __LINE__);
     SequenceNumber next_sequence(kMaxSequenceNumber);
     default_cf_handle_ = new ColumnFamilyHandleImpl(
         versions_->GetColumnFamilySet()->GetDefault(), this, &mutex_);
@@ -1291,6 +1308,7 @@ Status DBImpl::Recover(
     // attention to it in case we are recovering a database
     // produced by an older version of rocksdb.
     std::vector<std::string> filenames;
+    printf("%s: %d\n", __func__, __LINE__);
     s = env_->GetChildren(immutable_db_options_.wal_dir, &filenames);
     if (!s.ok()) {
       return s;
@@ -1319,11 +1337,13 @@ Status DBImpl::Recover(
             "flag but a log file already exists");
       } else if (error_if_data_exists_in_logs) {
         for (auto& log : logs) {
+          printf("%s: %d\n", __func__, __LINE__);
           std::string fname = LogFileName(immutable_db_options_.wal_dir, log);
           uint64_t bytes;
           s = env_->GetFileSize(fname, &bytes);
           if (s.ok()) {
             if (bytes > 0) {
+              printf("%s: %d\n", __func__, __LINE__);
               return Status::Corruption(
                   "error_if_data_exists_in_logs is set but there are data "
                   " in log files.");
@@ -1336,6 +1356,7 @@ Status DBImpl::Recover(
     if (!logs.empty()) {
       // Recover in the order in which the logs were generated
       std::sort(logs.begin(), logs.end());
+      printf("%s: %d\n", __func__, __LINE__);
       s = RecoverLogFiles(logs, &next_sequence, read_only);
       if (!s.ok()) {
         // Clear memtables if recovery failed
@@ -1348,6 +1369,7 @@ Status DBImpl::Recover(
     SetTickerCount(stats_, SEQUENCE_NUMBER, versions_->LastSequence());
   }
 
+  printf("%s: %d\n", __func__, __LINE__);
   // Initial value
   max_total_in_memory_state_ = 0;
   for (auto cfd : *versions_->GetColumnFamilySet()) {
@@ -1356,6 +1378,7 @@ Status DBImpl::Recover(
                                   mutable_cf_options->max_write_buffer_number;
   }
 
+  printf("%s: %d\n", __func__, __LINE__);
   return s;
 }
 
@@ -5747,6 +5770,8 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
     return s;
   }
 
+  printf("%s:%d\n", __func__, __LINE__);
+
   s = ValidateOptions(db_options, column_families);
   if (!s.ok()) {
     return s;
@@ -5761,6 +5786,7 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
         std::max(max_write_buffer_size, cf.options.write_buffer_size);
   }
 
+  printf("%s:%d\n", __func__, __LINE__);
   DBImpl* impl = new DBImpl(db_options, dbname);
   s = impl->env_->CreateDirIfMissing(impl->immutable_db_options_.wal_dir);
   if (s.ok()) {
@@ -5777,6 +5803,7 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
     return s;
   }
 
+  printf("%s:%d\n", __func__, __LINE__);
   s = impl->CreateArchivalDirectory();
   if (!s.ok()) {
     delete impl;
@@ -5784,8 +5811,10 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
   }
   impl->mutex_.Lock();
   // Handles create_if_missing, error_if_exists
+  printf("%s:%d\n", __func__, __LINE__);
   s = impl->Recover(column_families);
   if (s.ok()) {
+    printf("%s:%d\n", __func__, __LINE__);
     uint64_t new_log_number = impl->versions_->NewFileNumber();
     unique_ptr<WritableFile> lfile;
     EnvOptions soptions(db_options);
@@ -5793,14 +5822,17 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
         impl->immutable_db_options_.env->OptimizeForLogWrite(
             soptions, BuildDBOptions(impl->immutable_db_options_,
                                      impl->mutable_db_options_));
+    printf("%s:%d\n", __func__, __LINE__);
     s = NewWritableFile(
         impl->immutable_db_options_.env,
         LogFileName(impl->immutable_db_options_.wal_dir, new_log_number),
         &lfile, opt_env_options);
     if (s.ok()) {
+      printf("%s:%d\n", __func__, __LINE__);
       lfile->SetPreallocationBlockSize(
           impl->GetWalPreallocateBlockSize(max_write_buffer_size));
       impl->logfile_number_ = new_log_number;
+      printf("%s:%d\n", __func__, __LINE__);
       unique_ptr<WritableFileWriter> file_writer(
           new WritableFileWriter(std::move(lfile), opt_env_options));
       impl->logs_.emplace_back(
@@ -5841,6 +5873,7 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
         delete impl->InstallSuperVersionAndScheduleWork(
             cfd, nullptr, *cfd->GetLatestMutableCFOptions());
       }
+      printf("%s:%d\n", __func__, __LINE__);
       impl->alive_log_files_.push_back(
           DBImpl::LogFileNumberSize(impl->logfile_number_));
       impl->DeleteObsoleteFiles();
@@ -5849,6 +5882,7 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
   }
 
   if (s.ok()) {
+    printf("%s:%d\n", __func__, __LINE__);
     for (auto cfd : *impl->versions_->GetColumnFamilySet()) {
       if (cfd->ioptions()->compaction_style == kCompactionStyleFIFO) {
         auto* vstorage = cfd->current()->storage_info();
@@ -5881,6 +5915,7 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
   if (s.ok()) {
     // Persist RocksDB Options before scheduling the compaction.
     // The WriteOptionsFile() will release and lock the mutex internally.
+    printf("%s:%d\n", __func__, __LINE__);
     persist_options_status = impl->WriteOptionsFile();
 
     *dbptr = impl;
@@ -5892,6 +5927,7 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
   auto sfm = static_cast<SstFileManagerImpl*>(
       impl->immutable_db_options_.sst_file_manager.get());
   if (s.ok() && sfm) {
+    printf("%s:%d\n", __func__, __LINE__);
     // Notify SstFileManager about all sst files that already exist in
     // db_paths[0] when the DB is opened.
     auto& db_path = impl->immutable_db_options_.db_paths[0];
@@ -5909,6 +5945,7 @@ Status DB::Open(const DBOptions& db_options, const std::string& dbname,
   }
 
   if (s.ok()) {
+    printf("%s:%d\n", __func__, __LINE__);
     Log(InfoLogLevel::INFO_LEVEL, impl->immutable_db_options_.info_log,
         "DB pointer %p", impl);
     LogFlush(impl->immutable_db_options_.info_log);

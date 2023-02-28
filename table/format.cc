@@ -241,7 +241,9 @@ Status ReadFooterFromFile(RandomAccessFileReader* file, uint64_t file_size,
   }
   if (enforce_table_magic_number != 0 &&
       enforce_table_magic_number != footer->table_magic_number()) {
-    return Status::Corruption("Bad table magic number");
+        fprintf(stderr, "Read of offset = %lu failed of size %lu\n", read_offset, Footer::kMaxEncodedLength);
+        file->PrintFileDetails();
+        return Status::Corruption("Bad table magic number");
   }
   return Status::OK();
 }

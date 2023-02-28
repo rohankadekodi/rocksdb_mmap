@@ -215,6 +215,10 @@ class RandomAccessFileImpl : public RandomAccessFile {
     return file_->Read(offset, n, result, scratch);
   }
 
+  virtual Status PrintFileDetails() const override {
+    return file_->PrintFileDetails();
+  }
+
  private:
   FileState* file_;
 };

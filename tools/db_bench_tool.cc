@@ -2135,6 +2135,7 @@ class Benchmark {
       exit(1);
     }
     Open(&open_options_);
+    printf("Open done. Now printing header\n");
     PrintHeader();
     std::stringstream benchmark_stream(FLAGS_benchmarks);
     std::string name;
@@ -2952,6 +2953,8 @@ class Benchmark {
   }
 
   void InitializeOptionsGeneral(Options* opts) {
+    printf("Initializing General Options\n");
+
     Options& options = *opts;
 
     options.statistics = dbstats;
@@ -2966,6 +2969,8 @@ class Benchmark {
         options.row_cache = NewLRUCache(FLAGS_row_cache_size);
       }
     }
+
+    printf("Initializing General Options: %d\n", __LINE__);
     if (FLAGS_enable_io_prio) {
       FLAGS_env->LowerThreadPoolIOPriority(Env::LOW);
       FLAGS_env->LowerThreadPoolIOPriority(Env::HIGH);
@@ -2987,6 +2992,7 @@ class Benchmark {
     } else {
       options.env = FLAGS_env;
     }
+    printf("Initializing General Options: %d\n", __LINE__);
 
     if (FLAGS_num_multi_db <= 1) {
       OpenDb(options, FLAGS_db, &db_);
@@ -2997,6 +3003,9 @@ class Benchmark {
         OpenDb(options, GetDbNameForMultiple(FLAGS_db, i), &multi_dbs_[i]);
       }
     }
+
+    printf("Initializing General Options: %d\n", __LINE__);
+
     options.dump_malloc_stats = FLAGS_dump_malloc_stats;
   }
 
@@ -3010,6 +3019,8 @@ class Benchmark {
 
   void OpenDb(const Options& options, const std::string& db_name,
       DBWithColumnFamilies* db) {
+
+    printf("%s: %d\n", __func__, __LINE__);
     Status s;
     // Open with column families if necessary.
     if (FLAGS_num_column_families > 1) {
@@ -3033,6 +3044,7 @@ class Benchmark {
         s = OptimisticTransactionDB::Open(options, db_name, column_families,
                                           &db->cfh, &db->opt_txn_db);
         if (s.ok()) {
+          printf("%s: %d\n", __func__, __LINE__);
           db->db = db->opt_txn_db->GetBaseDB();
         }
       } else if (FLAGS_transaction_db) {
@@ -3044,9 +3056,11 @@ class Benchmark {
           db->db = ptr;
         }
       } else {
+        printf("%s: %d\n", __func__, __LINE__);
         s = DB::Open(options, db_name, column_families, &db->cfh, &db->db);
       }
 #else
+      printf("%s: %d\n", __func__, __LINE__);
       s = DB::Open(options, db_name, column_families, &db->cfh, &db->db);
 #endif  // ROCKSDB_LITE
       db->cfh.resize(FLAGS_num_column_families);
@@ -3058,6 +3072,7 @@ class Benchmark {
     } else if (FLAGS_optimistic_transaction_db) {
       s = OptimisticTransactionDB::Open(options, db_name, &db->opt_txn_db);
       if (s.ok()) {
+        printf("%s: %d\n", __func__, __LINE__);
         db->db = db->opt_txn_db->GetBaseDB();
       }
     } else if (FLAGS_transaction_db) {
@@ -3071,6 +3086,7 @@ class Benchmark {
     } else if (FLAGS_use_blob_db) {
       s = NewBlobDB(options, db_name, &db->db);
     } else {
+      printf("%s: %d\n", __func__, __LINE__);
       s = DB::Open(options, db_name, &db->db);
     }
     if (!s.ok()) {
