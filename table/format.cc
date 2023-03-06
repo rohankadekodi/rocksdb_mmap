@@ -25,6 +25,13 @@
 #include "util/xxhash.h"
 #include "util/statistics.h"
 #include "util/stop_watch.h"
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 
 namespace rocksdb {
@@ -219,15 +226,21 @@ Status ReadFooterFromFile(RandomAccessFileReader* file, uint64_t file_size,
     return Status::Corruption("file is too short to be an sstable");
   }
 
+
   char footer_space[Footer::kMaxEncodedLength];
   Slice footer_input;
   size_t read_offset =
       (file_size > Footer::kMaxEncodedLength)
           ? static_cast<size_t>(file_size - Footer::kMaxEncodedLength)
           : 0;
+
+  fprintf(stderr, "Reading Footer from file at offset = %lu with file size %lu\n", read_offset, file_size);
+
   Status s = file->Read(read_offset, Footer::kMaxEncodedLength, &footer_input,
                         footer_space);
   if (!s.ok()) return s;
+
+  // return Status::Corruption("Simply testing");
 
   // Check that we actually read the whole footer from the file. It may be
   // that size isn't correct.
@@ -241,7 +254,12 @@ Status ReadFooterFromFile(RandomAccessFileReader* file, uint64_t file_size,
   }
   if (enforce_table_magic_number != 0 &&
       enforce_table_magic_number != footer->table_magic_number()) {
-        fprintf(stderr, "Read of offset = %lu failed of size %lu\n", read_offset, Footer::kMaxEncodedLength);
+        fprintf(stderr, "Read of offset = %lu failed of size %lu. footer->table_magic_number() = %lu. Data read = \n", read_offset, Footer::kMaxEncodedLength, footer->table_magic_number());
+        const char *data = footer_input.data();
+        for(int i = 0; i < footer_input.size(); i++) {
+          fprintf(stderr, "%d|", (int)data[i]);
+        } 
+        fprintf(stderr, "\n");
         file->PrintFileDetails();
         return Status::Corruption("Bad table magic number");
   }
@@ -293,6 +311,12 @@ Status ReadBlock(RandomAccessFileReader* file, const Footer& footer,
         s = Status::Corruption("unknown checksum type");
     }
     if (s.ok() && actual != value) {
+      fprintf(stderr, "Block checksum is wrong. Actual = %u, value = %u, offset = %lu, size = %lu\n",
+              actual, value, handle.offset(), n + kBlockTrailerSize);
+      file->PrintFileDetails();
+      int rohan_fd = open("/home/cc/corrupted_data_file.sst", O_RDWR | O_CREAT | O_TRUNC, 0666);
+      assert(rohan_fd >= 0);
+      assert(write(rohan_fd, data, n + kBlockTrailerSize) == n + kBlockTrailerSize);
       s = Status::Corruption("block checksum mismatch");
     }
     if (!s.ok()) {

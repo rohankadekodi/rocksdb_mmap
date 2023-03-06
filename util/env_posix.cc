@@ -258,7 +258,7 @@ class PosixEnv : public Env {
       SetFD_CLOEXEC(fd, &options);
       if (options.use_mmap_writes) {
 	      /*
-	 if (!checkedDiskForMmap_) {
+	      if (!checkedDiskForMmap_) {
           // this will be executed once in the program's lifetime.
           // do not use mmapWrite on non ext-3/xfs/tmpfs systems.
           if (!SupportsFastAllocate(fname)) {
@@ -597,7 +597,7 @@ class PosixEnv : public Env {
     } else {
       int fd = fileno(f);
 #ifdef ROCKSDB_FALLOCATE_PRESENT
-      fallocate(fd, FALLOC_FL_KEEP_SIZE, 0, 4 * 1024);
+      // fallocate(fd, FALLOC_FL_KEEP_SIZE, 0, 4 * 1024);
 #endif
       SetFD_CLOEXEC(fd, nullptr);
       result->reset(new PosixLogger(f, &PosixEnv::gettid, this));
@@ -715,7 +715,7 @@ class PosixEnv : public Env {
     // TODO(icanadi) it's faster if fallocate_with_keep_size is false, but it
     // breaks TransactionLogIteratorStallAtLastRecord unit test. Fix the unit
     // test and make this false
-    optimized.fallocate_with_keep_size = true;
+    optimized.fallocate_with_keep_size = false;
     return optimized;
   }
 
@@ -723,7 +723,7 @@ class PosixEnv : public Env {
       const EnvOptions& env_options) const override {
     EnvOptions optimized = env_options;
     optimized.use_mmap_writes = true;
-    optimized.fallocate_with_keep_size = true;
+    optimized.fallocate_with_keep_size = false;
     return optimized;
   }
 

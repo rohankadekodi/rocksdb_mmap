@@ -9,6 +9,13 @@
 
 #include "util/crc32c.h"
 #include "util/testharness.h"
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 namespace rocksdb {
 namespace crc32c {
@@ -18,6 +25,17 @@ class CRC { };
 TEST(CRC, StandardResults) {
   // From rfc3720 section B.4.
   char buf[32];
+  
+  int fd = open("/mnt/pmem/000022.sst", O_RDONLY, 0666);
+  assert(fd >= 0);
+  char new_buf[4200];
+  pread(fd, new_buf, 4200, 15817944);
+  fprintf(stderr, "Value = %lu\n", Value(new_buf, sizeof(new_buf)));
+  exit(EXIT_SUCCESS);
+
+  memset(buf, 0, sizeof(buf));
+  fprintf(stderr, "Value = %lu\n", Value(buf, sizeof(buf)));
+  exit(EXIT_SUCCESS);
 
   memset(buf, 0, sizeof(buf));
   ASSERT_EQ(0x8a9136aaU, Value(buf, sizeof(buf)));

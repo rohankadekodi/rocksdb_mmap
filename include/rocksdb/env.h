@@ -93,7 +93,7 @@ struct EnvOptions {
   // improve the performance in workloads where you sync the data on every
   // write. By default, we set it to true for MANIFEST writes and false for
   // WAL writes
-  bool fallocate_with_keep_size = true;
+  bool fallocate_with_keep_size = false;
 
   // See DBOPtions doc
   size_t compaction_readahead_size;
@@ -449,7 +449,9 @@ class RandomAccessFile {
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const = 0;
 
-  virtual Status PrintFileDetails() = 0;
+  virtual Status PrintFileDetails() const {
+    return Status::OK();
+  }
 
   // Used by the file_reader_writer to decide if the ReadAhead wrapper
   // should simply forward the call and do not enact buffering or locking.
@@ -521,6 +523,9 @@ class WritableFile {
   }
 
   virtual Status Append(const Slice& data) = 0;
+  virtual Status GetWriteDetails() const {
+    return Status::OK();
+  }
 
   // Positioned write for unbuffered access default forward
   // to simple append as most of the tests are buffered by default

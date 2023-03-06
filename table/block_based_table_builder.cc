@@ -980,7 +980,12 @@ Status BlockBasedTableBuilder::Finish() {
     footer.set_checksum(r->table_options.checksum);
     std::string footer_encoding;
     footer.EncodeTo(&footer_encoding);
+    fprintf(stderr, "WRITING THE FOOTER\n");
     r->status = r->file->Append(footer_encoding);
+    fprintf(stderr, "WROTE THE FOOTER\n");
+    r->file->writable_file()->GetWriteDetails();
+    // if (r->status != Status::OK())
+    //   pause();
     if (r->status.ok()) {
       r->offset += footer_encoding.size();
     }

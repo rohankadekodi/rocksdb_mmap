@@ -128,22 +128,22 @@ class PosixLogger : public Logger {
       const size_t write_size = p - base;
 
 #ifdef ROCKSDB_FALLOCATE_PRESENT
-      const int kDebugLogChunkSize = 128 * 1024;
+      // const int kDebugLogChunkSize = 128 * 1024;
 
-      // If this write would cross a boundary of kDebugLogChunkSize
-      // space, pre-allocate more space to avoid overly large
-      // allocations from filesystem allocsize options.
-      const size_t log_size = log_size_;
-      const size_t last_allocation_chunk =
-        ((kDebugLogChunkSize - 1 + log_size) / kDebugLogChunkSize);
-      const size_t desired_allocation_chunk =
-        ((kDebugLogChunkSize - 1 + log_size + write_size) /
-           kDebugLogChunkSize);
-      if (last_allocation_chunk != desired_allocation_chunk) {
-        fallocate(
-            fd_, FALLOC_FL_KEEP_SIZE, 0,
-            static_cast<off_t>(desired_allocation_chunk * kDebugLogChunkSize));
-      }
+      // // If this write would cross a boundary of kDebugLogChunkSize
+      // // space, pre-allocate more space to avoid overly large
+      // // allocations from filesystem allocsize options.
+      // const size_t log_size = log_size_;
+      // const size_t last_allocation_chunk =
+      //   ((kDebugLogChunkSize - 1 + log_size) / kDebugLogChunkSize);
+      // const size_t desired_allocation_chunk =
+      //   ((kDebugLogChunkSize - 1 + log_size + write_size) /
+      //      kDebugLogChunkSize);
+      // if (last_allocation_chunk != desired_allocation_chunk) {
+      //   fallocate(
+      //       fd_, FALLOC_FL_KEEP_SIZE, 0,
+      //       static_cast<off_t>(desired_allocation_chunk * kDebugLogChunkSize));
+      // }
 #endif
 
       size_t sz = fwrite(base, 1, write_size, file_);

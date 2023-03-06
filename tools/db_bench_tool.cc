@@ -1443,14 +1443,16 @@ class Stats {
     done_ += num_ops;
     if (done_ >= next_report_) {
       if (!FLAGS_stats_interval) {
-        if      (next_report_ < 1000)   next_report_ += 100;
-        else if (next_report_ < 5000)   next_report_ += 500;
-        else if (next_report_ < 10000)  next_report_ += 1000;
-        else if (next_report_ < 50000)  next_report_ += 5000;
-        else if (next_report_ < 100000) next_report_ += 10000;
-        else if (next_report_ < 500000) next_report_ += 50000;
-        else                            next_report_ += 100000;
-        fprintf(stderr, "... finished %" PRIu64 " ops%30s\r", done_, "");
+        // if      (next_report_ < 1000)   next_report_ += 100;
+        // else if (next_report_ < 5000)   next_report_ += 500;
+        // else if (next_report_ < 10000)  next_report_ += 1000;
+        // else if (next_report_ < 50000)  next_report_ += 5000;
+        // else if (next_report_ < 100000) next_report_ += 10000;
+        // else if (next_report_ < 500000) next_report_ += 50000;
+        // else                            next_report_ += 100000;
+        // fprintf(stderr, "... finished %" PRIu64 " ops%30s\r", done_, "");
+        if (done_ % 100 == 0)
+          fprintf(stderr, "... finished %" PRIu64 " ops%30s\r", done_, "");
       } else {
         uint64_t now = FLAGS_env->NowMicros();
         int64_t usecs_since_last = now - last_report_finish_;

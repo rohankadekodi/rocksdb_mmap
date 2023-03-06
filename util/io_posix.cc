@@ -409,7 +409,7 @@ Status PosixMmapReadableFile::PrintFileDetails() const {
   fprintf(stderr, "mmap_region = %lu\n", (uint64_t)mmapped_region_);
   fprintf(stderr, "length = %lu\n", length_);
 
-  return Status.OK;
+  return Status::OK();
 }
 
 Status PosixMmapReadableFile::Read(uint64_t offset, size_t n, Slice* result,
@@ -449,10 +449,14 @@ Status PosixMmapReadableFile::InvalidateCache(size_t offset, size_t length) {
 Status PosixMmapFile::UnmapCurrentRegion() {
   TEST_KILL_RANDOM("PosixMmapFile::UnmapCurrentRegion:0", rocksdb_kill_odds);
   if (base_ != nullptr) {
+    // fprintf(stderr, "Calling munmap on fd = %d, of base = %lu and size = %lu\n",
+            // fd_, (unsigned long)base_, (unsigned long)(limit_ - base_));
     int munmap_status = munmap(base_, limit_ - base_);
     if (munmap_status != 0) {
       return IOError(filename_, munmap_status);
     }
+    // fprintf(stderr, "munmap successful on fd = %d, of base = %lu and size = %lu\n",
+            // fd_, (unsigned long)base_, (unsigned long)(limit_ - base_));
     file_offset_ += limit_ - base_;
     base_ = nullptr;
     limit_ = nullptr;
@@ -463,13 +467,19 @@ Status PosixMmapFile::UnmapCurrentRegion() {
     if (map_size_ < (1 << 20)) {
       map_size_ *= 2;
     }
+
+    // fprintf(stderr, "returning success after munmap on fd = %d, of base = %lu and size = %lu\n",
+            // fd_, (unsigned long)base_, (unsigned long)(limit_ - base_));
   }
   return Status::OK();
 }
 
 Status PosixMmapFile::MapNewRegion() {
 #ifdef ROCKSDB_FALLOCATE_PRESENT
+  // Status::Corruption("MmapNewRegion Checking that base_ is NULL");
   assert(base_ == nullptr);
+
+  // fprintf(stderr, "mapping new region with fd = %d, size = %lu at offset = %lu\n", fd_, map_size_, file_offset_)
 
   TEST_KILL_RANDOM("PosixMmapFile::UnmapCurrentRegion:0", rocksdb_kill_odds);
   // we can't fallocate with FALLOC_FL_KEEP_SIZE here
@@ -533,7 +543,8 @@ PosixMmapFile::PosixMmapFile(const std::string& fname, int fd, size_t page_size,
       file_offset_(0) {
 #ifdef ROCKSDB_FALLOCATE_PRESENT
   allow_fallocate_ = options.allow_fallocate;
-  fallocate_with_keep_size_ = options.fallocate_with_keep_size;
+  // fallocate_with_keep_size_ = options.fallocate_with_keep_size;
+  fallocate_with_keep_size_ = false;
 #endif
   assert((page_size & (page_size - 1)) == 0);
   assert(options.use_mmap_writes);
@@ -555,8 +566,10 @@ Status PosixMmapFile::Append(const Slice& data) {
     if (avail == 0) {
       Status s = UnmapCurrentRegion();
       if (!s.ok()) {
+        s = Status::Corruption("Unmap failed\n");
         return s;
       }
+      // fprintf(stderr, "Unmap is done. now mapping a new region for fd = %d\n", fd_);
       s = MapNewRegion();
       if (!s.ok()) {
         return s;
@@ -570,6 +583,17 @@ Status PosixMmapFile::Append(const Slice& data) {
     src += n;
     left -= n;
   }
+  return Status::OK();
+}
+
+Status PosixMmapFile::GetWriteDetails() const {
+  fprintf(stderr, "filename = %s\n", filename_.c_str());
+  fprintf(stderr, "FD = %d\n", fd_);
+  fprintf(stderr, "mmap base addr = %lu\n", (unsigned long)base_);
+  fprintf(stderr, "offset = %lu\n", file_offset_);
+  // if (strcmp(filename_.c_str(), "/mnt/pmem/000014.sst") == 0) {
+  //   return Status::Corruption("Wrote the Footer for 14.sst");
+  // }
   return Status::OK();
 }
 
@@ -672,7 +696,8 @@ PosixWritableFile::PosixWritableFile(const std::string& fname, int fd,
     : filename_(fname), fd_(fd), filesize_(0) {
 #ifdef ROCKSDB_FALLOCATE_PRESENT
   allow_fallocate_ = options.allow_fallocate;
-  fallocate_with_keep_size_ = options.fallocate_with_keep_size;
+  fallocate_with_keep_size_ = false;
+  // fallocate_with_keep_size_ = options.fallocate_with_keep_size;
 #endif
   assert(!options.use_mmap_writes);
 }

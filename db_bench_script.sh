@@ -1,14 +1,14 @@
 #!/bin/bash
 
-if [ "$#" -ne 2 ]; then
-    echo "Illegal number of parameters; Please provide run and fs as the parameter;"
-    exit 1
-fi
+# if [ "$#" -ne 2 ]; then
+#     echo "Illegal number of parameters; Please provide run and fs as the parameter;"
+#     exit 1
+# fi
 
 set -x
 
-runId=$1
-fs=$2
+# runId=$1
+# fs=$2
 ycsbWorkloadsDir=/home/cc/ycsb_workloads/zipfian
 rocksDbDir=/home/cc/rocksdb_mmap
 # daxResultsDir=/home/rohan/projects/fragmentation/dax/ycsb
@@ -38,8 +38,8 @@ mkdir -p $ramResultsDir
 
 load_workload()
 {
-    workloadName=$1
-    setup=$2
+    # workloadName=$1
+    # setup=$2
 
     # if [ "$setup" = "nova" ]; then
     #     resultDir=$novaResultsDir/fill$workloadName
@@ -59,15 +59,17 @@ load_workload()
 
     # sudo rm -rf $resultDir/*$runId
 
-    cat /proc/vmstat | grep -e "pgfault" -e "pgmajfault" -e "thp" -e "nr_file" 2>&1 | tee $resultDir/pg_faults_before_Run$runId
+    cat /proc/vmstat | grep -e "pgfault" -e "pgmajfault" -e "thp" -e "nr_file"
 
     #sudo dmesg -c
     sudo truncate -s 0 /var/log/syslog
 
+    ulimit -c unlimited
+    
     date
 
     #strace -fo trace.log -c -e trace=$straceList ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
-    LD_PRELOAD=/home/cc/ScaleMem/app_manager/build/libappmanager.so ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters 2>&1 | tee $resultDir/Run$runId
+    LD_PRELOAD=/home/cc/ScaleMem/app_manager/build/libappmanager.so ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters
 
     date
 
@@ -144,11 +146,11 @@ run_workload()
 
 setup_expt()
 {
-    setup=$1
+    # setup=$1
 
     #sudo rm -rf $pmemDir/*
 
-    load_workload seq $setup
+    load_workload seq
     sleep 5
 
     #sudo rm -rf $pmemDir/DR*
@@ -157,4 +159,4 @@ setup_expt()
     # sleep 10
 }
 
-setup_expt $fs
+setup_expt
