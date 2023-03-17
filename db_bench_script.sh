@@ -53,7 +53,7 @@ load_workload()
 
     # mkdir -p $resultDir
 
-    echo ----------------------- RocksDB db_bench fillseq ---------------------------
+    echo ----------------------- RocksDB db_bench fillrandom ---------------------------
     date
     cd $rocksDbDir
 
@@ -69,7 +69,7 @@ load_workload()
     date
 
     #strace -fo trace.log -c -e trace=$straceList ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=5000000 $parameters 2>&1 | tee $resultDir/Run$runId
-    LD_PRELOAD=/home/cc/ScaleMem/app_manager/build/libappmanager.so ./db_bench --use_existing_db=0 --benchmarks=fillrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters
+    LD_PRELOAD=/home/cc/ScaleMem/app_manager/build/libappmanager.so ./db_bench --use_existing_db=0 --benchmarks=fillrandom,readrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters
 
     date
 
@@ -107,30 +107,31 @@ run_workload()
 
     # mkdir -p $resultDir
 
-    echo ----------------------- RocksDB db_bench readseq ---------------------------
+    echo ----------------------- RocksDB db_bench readrandom ---------------------------
     date
     cd $rocksDbDir
 
     # sudo rm -rf $resultDir/*$runId
 
-    cat /proc/vmstat | grep -e "pgfault" -e "pgmajfault" -e "thp" -e "nr_file" 2>&1 | tee $resultDir/pg_faults_before_Run$runId
+    cat /proc/vmstat | grep -e "pgfault" -e "pgmajfault" -e "thp" -e "nr_file" 2>&1
 
-    #sudo dmesg -c
-    # sudo truncate -s 0 /var/log/syslog
+    sudo truncate -s 0 /var/log/syslog
+
+    ulimit -c unlimited
 
     date
 
-    ./db_bench --use_existing_db=1 --benchmarks=readrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters 2>&1 | tee $resultDir/Run$runId
+    LD_PRELOAD=/home/cc/ScaleMem/app_manager/build/libappmanager.so ./db_bench --use_existing_db=1 --benchmarks=readrandom,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=1 --num=1000000 $parameters
 
     date
 
     #sudo dmesg -c > dmesg_read_log.out
     # cp /var/log/syslog $resultDir/syslog_after_Run$runId
 
-    cat /proc/vmstat | grep -e "pgfault" -e "pgmajfault" -e "thp" -e "nr_file" 2>&1 | tee $resultDir/pg_faults_after_Run$runId
+    # cat /proc/vmstat | grep -e "pgfault" -e "pgmajfault" -e "thp" -e "nr_file" 2>&1 | tee $resultDir/pg_faults_after_Run$runId
 
-    echo Sleeping for 5 seconds . .
-    sleep 5
+    # echo Sleeping for 5 seconds . .
+    # sleep 5
 
     # ls -lah $databaseDir/* >> $resultDir/FileInfo$runId
     # echo "--------------------------------" >> $resultDir/FileInfo$runId
@@ -156,7 +157,7 @@ setup_expt()
     #sudo rm -rf $pmemDir/DR*
 
     # run_workload seq $setup
-    # sleep 10
+    # sleep 5
 }
 
 setup_expt

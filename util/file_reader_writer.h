@@ -135,6 +135,7 @@ class WritableFileWriter {
 
   ~WritableFileWriter() { Close(); }
 
+  Status Read(uint64_t offset, size_t n, Slice* result, char* scratch);
   Status Append(const Slice& data);
 
   Status Flush();

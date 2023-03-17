@@ -211,8 +211,10 @@ class PosixMmapFile : public WritableFile {
   // and it does not need any additional information
   virtual Status Truncate(uint64_t size) override { return Status::OK(); }
   virtual Status Close() override;
+  virtual Status Read(uint64_t offset, size_t n, Slice* result,
+                      char* scratch) const override;
   virtual Status Append(const Slice& data) override;
-  virtual Status GetWriteDetails() const override;
+  virtual Status GetWriteDetails(int *fd, unsigned long *mmap_addr, unsigned long *offset);
   virtual Status Flush() override;
   virtual Status Sync() override;
   virtual Status Fsync() override;

@@ -34,6 +34,8 @@
 #include "util/posix_logger.h"
 #include "util/string_util.h"
 #include "util/sync_point.h"
+#include <x86intrin.h>
+#include <immintrin.h>
 
 namespace rocksdb {
 
@@ -556,6 +558,12 @@ PosixMmapFile::~PosixMmapFile() {
   }
 }
 
+Status PosixMmapFile::Read(uint64_t offset, size_t n, Slice* result,
+                            char* scratch) const {
+  *result = Slice(reinterpret_cast<char*>(base_) + offset, n);
+  return Status::OK();
+}
+
 Status PosixMmapFile::Append(const Slice& data) {
   const char* src = data.data();
   size_t left = data.size();
@@ -576,21 +584,65 @@ Status PosixMmapFile::Append(const Slice& data) {
       }
       TEST_KILL_RANDOM("PosixMmapFile::Append:0", rocksdb_kill_odds);
     }
+    // _mm_mfence(); 
 
     size_t n = (left <= avail) ? left : avail;
     memcpy(dst_, src, n);
+    // fprintf(stderr, "Performing memcpy on dst = %lu of size = %lu\n",
+    //         (uint64_t)dst_, (uint64_t)n);
+
+    // const int LINESIZE = 64;
+    // const char *lastbyte = (const char *)((uint64_t)(dst_) + n - 1);
+    // const char *p = NULL;
+    // for (p = (const char *)dst_; p <= lastbyte ; p+=LINESIZE) {
+    //      _mm_clflush( p );
+    // }
+    // if mystruct is guaranteed aligned by 64, you're done.  Otherwise not:
+
+    // check if next line to maybe flush contains the last byte of the struct; if not then it was already flushed.
+    // if( ((uint64_t)p ^ (uint64_t)lastbyte) & -LINESIZE == 0 )
+    //     _mm_clflush( lastbyte );
+
+    // _mm_mfence(); 
+
+    // char *temp_buf = (char*)malloc(n);
+    // std::unique_ptr<char[]> heap_buf(new char[n]);
+    // Slice slice = Slice(heap_buf.get(), n);
+    // Read((dst_ - base_), n, &slice, temp_buf);
+    // const char* data = slice.data();  // Pointer to where Read put the data
+
+    // fprintf(stderr, "Reading just written data from mmap addr = %lu\n", (uint64_t)dst_);
+    // memcpy(rohan_buffer, (void*)(mmap_addr + (r->offset - rohan_offset)), block_contents.size());
+    // memcpy(temp_buf, dst_, n);
+    // if (memcmp(temp_buf, src, n)) { 
+    //     fprintf(stderr, "BUFFER IS WRONG ON THE WRITING FOR OFFSET = %lu, filename = %s\n", file_offset_ + (dst_ - base_), filename_.c_str());
+    //     fprintf(stderr, "Data diff = (idx: [Wrong,Correct])\n");
+    //     for (int i = 0; i < n; i++) {
+    //         if ((int)temp_buf[i] != (int)*(char*)(((unsigned long)src + i))) {
+    //             fprintf(stderr, "%d: [%d,%d]\n", i, (int)temp_buf[i], (int)*(char*)(((unsigned long)src + i)));
+    //         }
+    //     }
+    //     // return Status::Corruption("Write didn't write the data properly\n");
+    // }
+    // delete[] heap_buf;
+    // free(temp_buf);
+
     dst_ += n;
     src += n;
     left -= n;
+
   }
   return Status::OK();
 }
 
-Status PosixMmapFile::GetWriteDetails() const {
+Status PosixMmapFile::GetWriteDetails(int *fd, unsigned long *mmap_addr, unsigned long *offset) {
   fprintf(stderr, "filename = %s\n", filename_.c_str());
   fprintf(stderr, "FD = %d\n", fd_);
   fprintf(stderr, "mmap base addr = %lu\n", (unsigned long)base_);
   fprintf(stderr, "offset = %lu\n", file_offset_);
+  *fd = fd_;
+  *offset = file_offset_;
+  *mmap_addr = (unsigned long)base_;
   // if (strcmp(filename_.c_str(), "/mnt/pmem/000014.sst") == 0) {
   //   return Status::Corruption("Wrote the Footer for 14.sst");
   // }

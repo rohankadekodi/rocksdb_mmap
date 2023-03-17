@@ -522,8 +522,12 @@ class WritableFile {
     return c_DefaultPageSize;
   }
 
+  virtual Status Read(uint64_t offset, size_t n, Slice* result,
+                      char* scratch) const {
+                        return Status::OK();
+                      }
   virtual Status Append(const Slice& data) = 0;
-  virtual Status GetWriteDetails() const {
+  virtual Status GetWriteDetails(int *fd, unsigned long *mmap_addr, unsigned long *offset) {
     return Status::OK();
   }
 

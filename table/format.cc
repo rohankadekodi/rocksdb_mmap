@@ -234,7 +234,7 @@ Status ReadFooterFromFile(RandomAccessFileReader* file, uint64_t file_size,
           ? static_cast<size_t>(file_size - Footer::kMaxEncodedLength)
           : 0;
 
-  fprintf(stderr, "Reading Footer from file at offset = %lu with file size %lu\n", read_offset, file_size);
+  // fprintf(stderr, "Reading Footer from file at offset = %lu with file size %lu\n", read_offset, file_size);
 
   Status s = file->Read(read_offset, Footer::kMaxEncodedLength, &footer_input,
                         footer_space);
@@ -315,8 +315,8 @@ Status ReadBlock(RandomAccessFileReader* file, const Footer& footer,
               actual, value, handle.offset(), n + kBlockTrailerSize);
       file->PrintFileDetails();
       int rohan_fd = open("/home/cc/corrupted_data_file.sst", O_RDWR | O_CREAT | O_TRUNC, 0666);
-      assert(rohan_fd >= 0);
-      assert(write(rohan_fd, data, n + kBlockTrailerSize) == n + kBlockTrailerSize);
+      size_t data_written = write(rohan_fd, data, n + 1);
+      fprintf(stderr, "wrote data of size %lu\n", data_written);
       s = Status::Corruption("block checksum mismatch");
     }
     if (!s.ok()) {

@@ -3614,80 +3614,77 @@ class Benchmark {
   }
 
   void YCSB(ThreadState* thread) {
-	int tid = thread->tid;
-	DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
-	char trace_file[1000];
+    int num_workloads = 2;
+    int tid = thread->tid;
+    int workloads_done = 0;
+    char trace_file[1000];
+    envstrinput(trace_file);
 
-	envstrinput(trace_file);
+    while (workloads_done < num_workloads) {
+      DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
 
-	parse_trace(trace_file, tid);
+      parse_trace(trace_file, tid);
 
-//	struct rlimit rlim;
-//	rlim.rlim_cur = 1000000;
-//	rlim.rlim_max = 1000000;
-//	int ret;// = setrlimit(RLIMIT_NOFILE, &rlim);
-//	assert(ret == 0);
+      struct trace_operation_t *curop = trace_ops[tid];
+      unsigned long long total_ops = 0;
+      struct timeval start, end;
 
-	struct trace_operation_t *curop = trace_ops[tid];
-	unsigned long long total_ops = 0;
-	struct timeval start, end;
+      printf("Thread %d: Replaying trace ...\n", tid);
 
-	printf("Thread %d: Replaying trace ...\n", tid);
+      gettimeofday(&start, NULL);
+      fprintf(stderr, "\nCompleted 0 ops");
+      fflush(stderr);
+      uint64_t succeeded = 0;
+      struct  rusage *usage;
 
-	gettimeofday(&start, NULL);
-	fprintf(stderr, "\nCompleted 0 ops");
-	fflush(stderr);
-	uint64_t succeeded = 0;
-	struct  rusage *usage;
+      usage = (struct rusage *) malloc (sizeof(struct rusage));
 
-	usage = (struct rusage *) malloc (sizeof(struct rusage));
+      printf("PAGE FAULTS BEFORE WORKLOAD: \n");
+      getrusage(RUSAGE_SELF, usage);
+      printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+      printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+      printf("--------- \n");
 
-    printf("PAGE FAULTS BEFORE WORKLOAD: \n");
-	getrusage(RUSAGE_SELF, usage);
-	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
-	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
-    printf("--------- \n");
+      while(curop->cmd) {
+        Status status = perform_op(db_with_cfh->db, curop, tid);
+        if (status.ok()) {
+          succeeded++;
+        }
+        thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kYCSB);
+        curop++;
+        total_ops++;
+      }
 
-	while(curop->cmd) {
-		Status status = perform_op(db_with_cfh->db, curop, tid);
-		if (status.ok()) {
-			succeeded++;
-		}
-		thread->stats.FinishedOps(db_with_cfh, db_with_cfh->db, 1, kYCSB);
-		curop++;
-		total_ops++;
-//		if (total_ops % 10000 == 0) {
-//			fprintf(stderr, "\rCompleted %llu ops", total_ops);
-//		}
-	}
+      printf("PAGE FAULTS AFTER WORKLOAD: \n");
+      getrusage(RUSAGE_SELF, usage);
+      printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
+      printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
+      printf("--------- \n");
 
-    printf("PAGE FAULTS AFTER WORKLOAD: \n");
-	getrusage(RUSAGE_SELF, usage);
-	printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
-	printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
-    printf("--------- \n");
+      PrintStats("rocksdb.stats");
+      fprintf(stderr, "\r");
+      gettimeofday(&end, NULL);
+      double secs = (end.tv_sec - start.tv_sec) + double(end.tv_usec - start.tv_usec) / 1000000;
 
-	PrintStats("rocksdb.stats");
-	fprintf(stderr, "\r");
-//	int ret = 
-	gettimeofday(&end, NULL);
-	double secs = (end.tv_sec - start.tv_sec) + double(end.tv_usec - start.tv_usec) / 1000000;
+      struct result_t& resultt = results[tid];
+      printf("\n\nThread %d: Done replaying %llu operations.\n", tid, total_ops);
+      unsigned long long splitup_ops = print_splitup(tid);
+      assert(splitup_ops == total_ops);
+      printf("Thread %d: %lu of %llu operations succeeded.\n", tid, succeeded, total_ops);
+      printf("Thread %d: Time taken = %0.3lf seconds\n", tid, secs);
+      printf("Thread %d: Total data: YCSB = %0.6lf GB, HyperLevelDB = %0.6lf GB\n", tid,
+          double(resultt.ycsbdata) / 1024.0 / 1024.0 / 1024.0,
+          double(resultt.kvdata) / 1024.0 / 1024.0 / 1024.0);
+      printf("Thread %d: Ops/s = %0.3lf Kops/s\n", tid, double(total_ops) / 1024.0 / secs);
 
-	struct result_t& resultt = results[tid];
-	printf("\n\nThread %d: Done replaying %llu operations.\n", tid, total_ops);
-	unsigned long long splitup_ops = print_splitup(tid);
-	assert(splitup_ops == total_ops);
-	printf("Thread %d: %lu of %llu operations succeeded.\n", tid, succeeded, total_ops);
-	printf("Thread %d: Time taken = %0.3lf seconds\n", tid, secs);
-	printf("Thread %d: Total data: YCSB = %0.6lf GB, HyperLevelDB = %0.6lf GB\n", tid,
-			double(resultt.ycsbdata) / 1024.0 / 1024.0 / 1024.0,
-			double(resultt.kvdata) / 1024.0 / 1024.0 / 1024.0);
-	printf("Thread %d: Ops/s = %0.3lf Kops/s\n", tid, double(total_ops) / 1024.0 / secs);
+      double throughput = double(resultt.ycsbdata) / secs;
+      printf("Thread %d: YCSB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
+      throughput = double(resultt.kvdata) / secs;
+      printf("Thread %d: HyperLevelDB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
 
-	double throughput = double(resultt.ycsbdata) / secs;
-	printf("Thread %d: YCSB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
-	throughput = double(resultt.kvdata) / secs;
-	printf("Thread %d: HyperLevelDB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
+      tid++;
+      workloads_done++;
+    }
   }
 
   void ReadRandom(ThreadState* thread) {

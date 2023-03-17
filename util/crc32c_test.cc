@@ -26,10 +26,10 @@ TEST(CRC, StandardResults) {
   // From rfc3720 section B.4.
   char buf[32];
   
-  int fd = open("/mnt/pmem/000022.sst", O_RDONLY, 0666);
+  int fd = open("/mnt/pmem/000007.sst", O_RDONLY, 0666);
   assert(fd >= 0);
-  char new_buf[4200];
-  pread(fd, new_buf, 4200, 15817944);
+  char new_buf[4196];
+  pread(fd, new_buf, 4196, 4200);
   fprintf(stderr, "Value = %lu\n", Value(new_buf, sizeof(new_buf)));
   exit(EXIT_SUCCESS);
 

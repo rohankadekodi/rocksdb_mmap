@@ -21,7 +21,7 @@ straceList=read,write,open,close,stat,fstat,lstat,lseek,mmap,mprotect,munmap,pre
 if [ "$fs" = "ram" ]; then
     pmemDir=/mnt/ramdisk
 else
-    pmemDir=/mnt/pmem
+    pmemDir=/mnt/nfs
 fi
 databaseDir=$pmemDir
 
@@ -153,7 +153,7 @@ setup_expt()
 
     #sudo rm -rf $pmemDir/DR*
 
-    # run_workload seq $setup
+    run_workload seq $setup
     # sleep 10
 }
 

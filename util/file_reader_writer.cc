@@ -50,6 +50,11 @@ Status RandomAccessFileReader::PrintFileDetails() const {
   return file_->PrintFileDetails();
 }
 
+Status WritableFileWriter::Read(uint64_t offset, size_t n, Slice* result, char* scratch) {
+  Flush();
+  return writable_file_->Read(offset, n, result, scratch);
+}
+
 Status WritableFileWriter::Append(const Slice& data) {
   const char* src = data.data();
   size_t left = data.size();

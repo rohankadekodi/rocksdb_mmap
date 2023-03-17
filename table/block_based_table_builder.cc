@@ -47,6 +47,10 @@
 #include "util/stop_watch.h"
 #include "util/xxhash.h"
 
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 namespace rocksdb {
 
 extern const std::string kHashIndexPrefixesBlock;
@@ -743,6 +747,11 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
   handle->set_offset(r->offset);
   handle->set_size(block_contents.size());
   r->status = r->file->Append(block_contents);
+  int rohan_fd = 0;
+  unsigned long rohan_offset = 0;
+  unsigned long mmap_addr = 0;
+  // r->file->writable_file()->GetWriteDetails(&rohan_fd, &mmap_addr, &rohan_offset);
+  // fprintf(stderr, "r->offset = %lu\n", r->offset);
   if (r->status.ok()) {
     char trailer[kBlockTrailerSize];
     trailer[0] = type;
@@ -754,7 +763,52 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
         // intentional fallthrough in release binary
       case kCRC32c: {
         auto crc = crc32c::Value(block_contents.data(), block_contents.size());
+
         crc = crc32c::Extend(crc, trailer, 1);  // Extend to cover block type
+        // fprintf(stderr, "Checksum value on extend: %u\n", (uint32_t)crc);
+
+        /* Write checksum data to file */
+        // char path[512];
+        // sprintf(path, "/home/cc/checksum_files/checksum_file_%u.data", (uint32_t)crc);
+        // int fd = open(path, O_CREAT | O_RDWR, 0644);
+        // if(fd < 0) {
+        //   fprintf(stderr, "Failed to open file %s\n", path);
+        // }
+        // char *rohan_buffer = (char*)malloc(block_contents.size());
+        // if (mmap_addr) {
+        //     char *temp_buf = (char*)malloc(block_contents.size());
+        //     std::unique_ptr<char[]> heap_buf(new char[block_contents.size()]);
+        //     Slice slice = Slice(heap_buf.get(), block_contents.size());
+        //     r->file->Read(r->offset, block_contents.size(), &slice, temp_buf);
+        //     const char* data = slice.data();  // Pointer to where Read put the data
+
+        //     fprintf(stderr, "Reading just written data from mmap addr = %lu\n", (mmap_addr + (r->offset - rohan_offset)));
+        //     // memcpy(rohan_buffer, (void*)(mmap_addr + (r->offset - rohan_offset)), block_contents.size());
+        //     if (memcmp(data, block_contents.data(), block_contents.size())) {
+        //           fprintf(stderr, "BUFFER IS WRONG ON THE WRITING FOR OFFSET = %lu, fd = %d\n", r->offset, rohan_fd);
+        //           fprintf(stderr, "Data diff = (idx: [Wrong,Correct])\n");
+        //           for (int i = 0; i < block_contents.size(); i++) {
+        //               if ((int)data[i] != (int)*(char*)(((unsigned long)block_contents.data() + i))) {
+        //                   fprintf(stderr, "%d: [%d,%d]\n", i, (int)data[i], (int)*(char*)(((unsigned long)block_contents.data() + i)));
+        //               }
+        //           }
+        //     }
+        //     // delete[] heap_buf;
+        //     free(temp_buf);
+        // }
+
+        // int ret = pread64(rohan_fd, rohan_buffer, block_contents.size(), r->offset);
+        // if(ret != block_contents.size()) {
+        //   fprintf(stderr, "Could only read %d bytes. Expected %d\n", ret, block_contents.size());
+        // }
+        // ret = write(fd, rohan_buffer, block_contents.size());
+        // if(ret != block_contents.size()) {
+        //   fprintf(stderr, "Could only write %d bytes. Expected %d\n", ret, block_contents.size());
+        // }
+        // free(rohan_buffer);
+        // close(fd);
+        /* End of write checksum data to file */
+
         EncodeFixed32(trailer_without_type, crc32c::Mask(crc));
         break;
       }
@@ -980,10 +1034,13 @@ Status BlockBasedTableBuilder::Finish() {
     footer.set_checksum(r->table_options.checksum);
     std::string footer_encoding;
     footer.EncodeTo(&footer_encoding);
-    fprintf(stderr, "WRITING THE FOOTER\n");
+    // fprintf(stderr, "WRITING THE FOOTER\n");
     r->status = r->file->Append(footer_encoding);
-    fprintf(stderr, "WROTE THE FOOTER\n");
-    r->file->writable_file()->GetWriteDetails();
+    // fprintf(stderr, "WROTE THE FOOTER\n");
+    int rohan_fd = 0;
+    unsigned long rohan_offset = 0;
+    unsigned long mmap_addr = 0;
+    // r->file->writable_file()->GetWriteDetails(&rohan_fd, &mmap_addr, &rohan_offset);
     // if (r->status != Status::OK())
     //   pause();
     if (r->status.ok()) {
