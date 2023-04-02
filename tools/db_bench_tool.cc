@@ -13,6 +13,7 @@
 
 #define envinput(var, type) {assert(getenv(#var)); int ret = sscanf(getenv(#var), type, &var); assert(ret == 1);}
 #define envstrinput(var) strcpy(var, getenv(#var))
+#define envstrinput2(var,env) strcpy(var, getenv(#env))
 
 
 #ifdef GFLAGS
@@ -3553,7 +3554,7 @@ class Benchmark {
   	if (op->cmd == 'r') {
   		std::string value;
   		status = db->Get(roptions, key, &value);
-//  		sassert(status.ok());
+  		sassert(status.ok());
   		resultt.ycsbdata += keylen + value.length();
   		resultt.kvdata += keylen + value.length();
   		//assert(value.length() == 1080);
@@ -3568,6 +3569,7 @@ class Benchmark {
   		resultt.kv_d++;
   	} else if (op->cmd == 'i') {
   		// op->param refers to the size of the value.
+		op->param = 256;
   		status = db->Put(woptions, key, Slice(valuebuf, op->param));
   		sassert(status.ok());
   		resultt.ycsbdata += keylen + op->param;
@@ -3617,13 +3619,16 @@ class Benchmark {
     int num_workloads = 2;
     int tid = thread->tid;
     int workloads_done = 0;
-    char trace_file[1000];
-    envstrinput(trace_file);
+    char trace_file[2][1000];
+    envstrinput2(trace_file[0],trace_file);
+    envstrinput2(trace_file[1],trace_file);
 
     while (workloads_done < num_workloads) {
-      DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
 
-      parse_trace(trace_file, tid);
+      parse_trace(trace_file[workloads_done], tid);
+      // parse_trace(trace_file[1], tid+1);
+
+      DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
 
       struct trace_operation_t *curop = trace_ops[tid];
       unsigned long long total_ops = 0;
