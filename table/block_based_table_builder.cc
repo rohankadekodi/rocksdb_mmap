@@ -768,13 +768,8 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
         // fprintf(stderr, "Checksum value on extend: %u\n", (uint32_t)crc);
 
         /* Write checksum data to file */
-        // char path[512];
-        // sprintf(path, "/home/cc/checksum_files/checksum_file_%u.data", (uint32_t)crc);
-        // int fd = open(path, O_CREAT | O_RDWR, 0644);
-        // if(fd < 0) {
-        //   fprintf(stderr, "Failed to open file %s\n", path);
-        // }
-        // char *rohan_buffer = (char*)malloc(block_contents.size());
+
+
         // if (mmap_addr) {
         //     char *temp_buf = (char*)malloc(block_contents.size());
         //     std::unique_ptr<char[]> heap_buf(new char[block_contents.size()]);
@@ -792,21 +787,13 @@ void BlockBasedTableBuilder::WriteRawBlock(const Slice& block_contents,
         //                   fprintf(stderr, "%d: [%d,%d]\n", i, (int)data[i], (int)*(char*)(((unsigned long)block_contents.data() + i)));
         //               }
         //           }
+
+        //           exit(0);
         //     }
-        //     // delete[] heap_buf;
+        //     heap_buf.reset();
         //     free(temp_buf);
         // }
 
-        // int ret = pread64(rohan_fd, rohan_buffer, block_contents.size(), r->offset);
-        // if(ret != block_contents.size()) {
-        //   fprintf(stderr, "Could only read %d bytes. Expected %d\n", ret, block_contents.size());
-        // }
-        // ret = write(fd, rohan_buffer, block_contents.size());
-        // if(ret != block_contents.size()) {
-        //   fprintf(stderr, "Could only write %d bytes. Expected %d\n", ret, block_contents.size());
-        // }
-        // free(rohan_buffer);
-        // close(fd);
         /* End of write checksum data to file */
 
         EncodeFixed32(trailer_without_type, crc32c::Mask(crc));

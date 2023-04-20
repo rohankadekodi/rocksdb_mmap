@@ -99,6 +99,7 @@ OPT += -DNDEBUG
 DISABLE_WARNING_AS_ERROR=1
 else
 $(warning Warning: Compiling in debug mode. Don't use the resulting binary in production)
+DISABLE_WARNING_AS_ERROR=1
 endif
 
 #-----------------------------------------------

@@ -13,6 +13,7 @@
 
 #define envinput(var, type) {assert(getenv(#var)); int ret = sscanf(getenv(#var), type, &var); assert(ret == 1);}
 #define envstrinput(var) strcpy(var, getenv(#var))
+#define envstrinput2(var,env) strcpy(var, getenv(#env))
 
 
 #ifdef GFLAGS
@@ -2362,7 +2363,7 @@ class Benchmark {
         }
 
         for (int i = 0; i < num_warmup; i++) {
-          RunBenchmark(1, 1, num_threads, name, method);
+          RunBenchmark(num_threads, name, method);
         }
 
         if (num_repeat > 1) {
@@ -2371,10 +2372,8 @@ class Benchmark {
 
         CombinedStats combined_stats;
         for (int i = 0; i < num_repeat; i++) {
-          for (int i = 0; i < 3; i++) {
-            Stats stats = RunBenchmark(i, 3, num_threads, name, method);
-            combined_stats.AddStats(stats);
-          }
+          Stats stats = RunBenchmark(num_threads, name, method);
+          combined_stats.AddStats(stats);
         }
         if (num_repeat > 1) {
           combined_stats.Report(name);
@@ -2433,7 +2432,7 @@ class Benchmark {
     }
   }
 
-  Stats RunBenchmark(int benchmark_id, int num_benchmarks, int n, Slice name,
+  Stats RunBenchmark(int n, Slice name,
                      void (Benchmark::*method)(ThreadState*)) {
     SharedState shared;
     shared.total = n;
@@ -2474,7 +2473,7 @@ class Benchmark {
       arg[i].bm = this;
       arg[i].method = method;
       arg[i].shared = &shared;
-      arg[i].thread = new ThreadState((benchmark_id*n) + i);
+      arg[i].thread = new ThreadState(i);
       arg[i].thread->stats.SetReporterAgent(reporter_agent.get());
       arg[i].thread->shared = &shared;
       FLAGS_env->StartThread(ThreadBody, &arg[i]);
@@ -3441,7 +3440,7 @@ class Benchmark {
   	unsigned long long kv_itnext;
   };
 
-  struct result_t results[32];
+  struct result_t results[10];
 
   unsigned long long print_splitup(int tid) {
 	struct result_t& resultt = results[tid];
@@ -3555,7 +3554,7 @@ class Benchmark {
   	if (op->cmd == 'r') {
   		std::string value;
   		status = db->Get(roptions, key, &value);
-//  		sassert(status.ok());
+  		sassert(status.ok());
   		resultt.ycsbdata += keylen + value.length();
   		resultt.kvdata += keylen + value.length();
   		//assert(value.length() == 1080);
@@ -3570,6 +3569,7 @@ class Benchmark {
   		resultt.kv_d++;
   	} else if (op->cmd == 'i') {
   		// op->param refers to the size of the value.
+		op->param = 256;
   		status = db->Put(woptions, key, Slice(valuebuf, op->param));
   		sassert(status.ok());
   		resultt.ycsbdata += keylen + op->param;
@@ -3616,16 +3616,19 @@ class Benchmark {
   }
 
   void YCSB(ThreadState* thread) {
-    int num_workloads = 1;
+    int num_workloads = 2;
     int tid = thread->tid;
     int workloads_done = 0;
-    char trace_file[1000];
-    envstrinput(trace_file);
+    char trace_file[2][1000];
+    envstrinput2(trace_file[0],trace_file);
+    envstrinput2(trace_file[1],trace_file);
 
     while (workloads_done < num_workloads) {
-      DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
 
-      parse_trace(trace_file, tid);
+      parse_trace(trace_file[workloads_done], tid);
+      // parse_trace(trace_file[1], tid+1);
+
+      DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread);
 
       struct trace_operation_t *curop = trace_ops[tid];
       unsigned long long total_ops = 0;
@@ -3646,6 +3649,8 @@ class Benchmark {
       printf("soft page faults (ru_minflt) : %ld\n", usage->ru_minflt);
       printf("hard page faults (ru_majflt) : %ld\n", usage->ru_majflt);
       printf("--------- \n");
+
+      memset(valuebuf, 'V', MAX_VALUE_SIZE);
 
       while(curop->cmd) {
         Status status = perform_op(db_with_cfh->db, curop, tid);
