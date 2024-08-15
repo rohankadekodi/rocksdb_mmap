@@ -3495,7 +3495,7 @@ class Benchmark {
   	struct trace_operation_t *curop = NULL;
   	unsigned long long total_ops = 0;
 
-  	char file_names[20][100];
+  	char file_names[64][100];
   	int num_trace_files = split_file_names(file, file_names);
 
   	const char* corresponding_file;
@@ -3619,7 +3619,7 @@ class Benchmark {
     int num_workloads = 1;
     int tid = thread->tid;
     int workloads_done = 0;
-    char trace_file[1000];
+    char trace_file[8192];
     envstrinput(trace_file);
 
     while (workloads_done < num_workloads) {
