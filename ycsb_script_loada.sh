@@ -14,8 +14,8 @@ echo "Loading config from $CONFIG_DIR"
 source $CONFIG_DIR
 export NODE_1_TOTAL_SIZE_BYTES=$((16<<30))
 export MAP_UNPOPULATE=1
-export PREFETCHING=1
-# make -C "$SCALEMEM_DIR/app_manager" clean all
+unset PREFETCHING
+make -C "$SCALEMEM_DIR/app_manager" clean all
 
 # runId=$1
 # fs=$2
@@ -34,7 +34,6 @@ ulimit -n 16384
 
 OUTPUT_FILE="${SCALEMEM_DIR}/record/rocksdb/run_scalemem_$(date +"%Y_%m_%d_%H_%M_%S").log"
 cp "${METADATA_PATH}" "${OUTPUT_FILE}"
-mount | grep pmem | tee -a "$OUTPUT_FILE"
 
 workload()
 {
@@ -68,7 +67,7 @@ setup_expt()
     rm -rf $pmemDir/*
     file_appendix=25M
 
-    workload LoadA,RunA,RunB,RunC,RunF,RunD $ycsbWorkloadsDir/loada_${file_appendix}_1_8,$ycsbWorkloadsDir/loada_${file_appendix}_2_8,$ycsbWorkloadsDir/loada_${file_appendix}_3_8,$ycsbWorkloadsDir/loada_${file_appendix}_4_8,$ycsbWorkloadsDir/loada_${file_appendix}_5_8,$ycsbWorkloadsDir/loada_${file_appendix}_6_8,$ycsbWorkloadsDir/loada_${file_appendix}_7_8,$ycsbWorkloadsDir/loada_${file_appendix}_8_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_8_8
+    workload LoadA,RunA,RunB,RunC,RunF,RunD $ycsbWorkloadsDir/loada_${file_appendix}_1_8,$ycsbWorkloadsDir/loada_${file_appendix}_2_8,$ycsbWorkloadsDir/loada_${file_appendix}_3_8,$ycsbWorkloadsDir/loada_${file_appendix}_4_8,$ycsbWorkloadsDir/loada_${file_appendix}_5_8,$ycsbWorkloadsDir/loada_${file_appendix}_6_8,$ycsbWorkloadsDir/loada_${file_appendix}_7_8,$ycsbWorkloadsDir/loada_${file_appendix}_8_8
     sleep 5
     # $scriptsDir/pause_script.sh 10
 

@@ -9,19 +9,14 @@ set -x
 
 SCALEMEM_DIR=/home/cc/ScaleMem
 CONFIG_DIR="${SCALEMEM_DIR}/node_manager/tests/config.source"
-METADATA_PATH="${SCALEMEM_DIR}/app_manager/metadata.txt"
 echo "Loading config from $CONFIG_DIR"
 source $CONFIG_DIR
-export NODE_1_TOTAL_SIZE_BYTES=$((16<<30))
-export MAP_UNPOPULATE=1
-export PREFETCHING=1
-# make -C "$SCALEMEM_DIR/app_manager" clean all
 
 # runId=$1
 # fs=$2
-ycsbWorkloadsDir=/tmp-scalemem-workloads/ycsb_workloads
-pmemDir=/mnt/pmem
-databaseDir=$pmemDir
+ycsbWorkloadsDir=/home/cc/ycsb_workloads
+nfsDir=/mnt/nfs
+databaseDir=$nfsDir
 service memcached restart
 export HRD_REGISTRY_IP=$NODE_1_IP
 
@@ -31,10 +26,6 @@ echo parameters: $parameters
 
 ulimit -c unlimited
 ulimit -n 16384
-
-OUTPUT_FILE="${SCALEMEM_DIR}/record/rocksdb/run_scalemem_$(date +"%Y_%m_%d_%H_%M_%S").log"
-cp "${METADATA_PATH}" "${OUTPUT_FILE}"
-mount | grep pmem | tee -a "$OUTPUT_FILE"
 
 workload()
 {
@@ -52,11 +43,8 @@ workload()
 
     date
     # export LD_LIBRARY_PATH=/home/cc/ScaleMem/app_manager/build
-    LD_PRELOAD='/home/cc/ScaleMem/app_manager/build/libappmanager.so' ./db_bench --use_existing_db=0 --benchmarks=ycsb,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=8 $parameters | tee -a "$OUTPUT_FILE"
-    #./db_bench --use_existing_db=0 --benchmarks=ycsb,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=8 $parameters
-    cat << EOF >> "$OUTPUT_FILE"
------END-----
-EOF
+    ./db_bench --use_existing_db=0 --benchmarks=ycsb,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=8 $parameters | tee /home/cc/ScaleMem/record/rocksdb/run_nfs_$(date +"%Y_%m_%d_%H_%M_%S").log
+    #strace -fo ./trace.log ./db_bench --use_existing_db=0 --benchmarks=ycsb,stats,levelstats,sstables --db=$databaseDir --compression_type=none --threads=8 $parameters
 
     date
 }
@@ -65,7 +53,7 @@ setup_expt()
 {
     # setup=$1
 
-    rm -rf $pmemDir/*
+    rm -rf $nfsDir/*
     file_appendix=25M
 
     workload LoadA,RunA,RunB,RunC,RunF,RunD $ycsbWorkloadsDir/loada_${file_appendix}_1_8,$ycsbWorkloadsDir/loada_${file_appendix}_2_8,$ycsbWorkloadsDir/loada_${file_appendix}_3_8,$ycsbWorkloadsDir/loada_${file_appendix}_4_8,$ycsbWorkloadsDir/loada_${file_appendix}_5_8,$ycsbWorkloadsDir/loada_${file_appendix}_6_8,$ycsbWorkloadsDir/loada_${file_appendix}_7_8,$ycsbWorkloadsDir/loada_${file_appendix}_8_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runa_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runb_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runc_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/runf_${file_appendix}_${file_appendix}_8_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_1_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_2_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_3_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_4_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_5_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_6_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_7_8,$ycsbWorkloadsDir/rund_${file_appendix}_${file_appendix}_8_8

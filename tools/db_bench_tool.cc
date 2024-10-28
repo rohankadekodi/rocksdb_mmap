@@ -99,6 +99,8 @@ using GFLAGS::ParseCommandLineFlags;
 using GFLAGS::RegisterFlagValidator;
 using GFLAGS::SetUsageMessage;
 
+bool* parse_done = nullptr;
+
 DEFINE_string(benchmarks,
               "fillseq,"
               "fillsync,"
@@ -2369,10 +2371,14 @@ class Benchmark {
           printf("Running benchmark for %d times\n", num_repeat);
         }
 
+	parse_done = new bool[num_threads];
+	for (int i = 0; i < num_threads; i++) {
+	  parse_done[i] = false;
+	}
         CombinedStats combined_stats;
         for (int i = 0; i < num_repeat; i++) {
-          for (int i = 0; i < 3; i++) {
-            Stats stats = RunBenchmark(i, 3, num_threads, name, method);
+          for (int i = 0; i < 6; i++) {
+            Stats stats = RunBenchmark(i, 6, num_threads, name, method);
             combined_stats.AddStats(stats);
           }
         }
@@ -3500,7 +3506,8 @@ class Benchmark {
 
   	const char* corresponding_file;
   	if (tid >= num_trace_files) {
-  		corresponding_file = file_names[num_trace_files-1]; // Take the last file if number of files is lesser
+  		corresponding_file = file_names[num_trace_files-1];
+		// Take the last file if number of files is lesser
   	} else {
   		corresponding_file = file_names[tid];
   	}
@@ -3518,6 +3525,7 @@ class Benchmark {
   	fp = fopen(corresponding_file, "r");
   	assert(fp != NULL);
   	curop = trace_ops[tid];
+	ret = getline(&buf, &bufsize, fp);
   	while((ret = getline(&buf, &bufsize, fp)) > 0) {
   		char tmp[1000];
   		ret = sscanf(buf, "%c %llu %lu\n", &curop->cmd, &curop->key, &curop->param);
@@ -3536,6 +3544,15 @@ class Benchmark {
   		curop++;
   		total_ops++;
   	}
+	//fclose(fp);
+	//system("echo 3 | tee /proc/sys/vm/drop_caches");
+	int fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
+	write(fd, "3", 1);
+	fsync(fd);
+	close(fd);
+	//printf("parse_done for %d\n", tid % FLAGS_threads);
+	//parse_done[tid % FLAGS_threads] = true;
+end:
   	printf("Thread %d: Done parsing, %llu operations.\n", tid, total_ops);
   }
 
